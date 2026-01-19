@@ -1,0 +1,9 @@
+apiVersion: core.open-neon.io/v1alpha1
+kind: NeonCluster
+metadata:
+  labels:
+    app.kubernetes.io/name: neon-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: neoncluster-sample
+spec:
+  # TODO(user): Add fields here
