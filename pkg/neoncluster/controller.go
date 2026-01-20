@@ -18,19 +18,32 @@ package neoncluster
 
 import (
 	"context"
+	"log/slog"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	corev1alpha1 "github.com/open-neon/neon-operator/pkg/api/v1alpha1"
 )
 
-// NeonClusterReconciler reconciles a NeonCluster object
-type NeonClusterReconciler struct {
-	client.Client
-	Scheme *runtime.Scheme
+const controllerName = "neoncluster-controller"
+
+// Operator manages lifecycle for NeonCluster resources.
+type Operator struct {
+	nclient client.Client
+	scheme *runtime.Scheme
+	logger *slog.Logger
+}
+
+// New creates a new NeonCluster Controller.
+func New(logger *slog.Logger, client client.Client, scheme *runtime.Scheme) (*Operator, error) {
+   logger = logger.With("component", controllerName)
+	return &Operator{
+		logger: logger,
+		nclient: client,
+		scheme: scheme,
+	}, nil
 }
 
 // +kubebuilder:rbac:groups=core.open-neon.io,resources=neonclusters,verbs=get;list;watch;create;update;patch;delete
@@ -46,16 +59,13 @@ type NeonClusterReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.22.4/pkg/reconcile
-func (r *NeonClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = logf.FromContext(ctx)
-
-	// TODO(user): your logic here
-
+func (r *Operator) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *NeonClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *Operator) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1alpha1.NeonCluster{}).
 		Named("neoncluster").

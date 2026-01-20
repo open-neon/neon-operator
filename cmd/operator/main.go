@@ -178,10 +178,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := (&neonclusterController.NeonClusterReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	// if err := (&neonclusterController.NeonClusterReconciler{
+	// 	Client: mgr.GetClient(),
+	// 	Scheme: mgr.GetScheme(),
+	// }).SetupWithManager(mgr); err != nil {
+	// 	setupLog.Error(err, "unable to create controller", "controller", "NeonCluster")
+	// 	os.Exit(1)
+	// }
+	nco, err := neonclusterController.New(setupLog, mgr.GetClient(), mgr.GetScheme())
+	if err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "NeonCluster")
+		os.Exit(1)
+	}
+
+	if err := nco.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NeonCluster")
 		os.Exit(1)
 	}
