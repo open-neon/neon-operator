@@ -35,8 +35,8 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	corev1alpha1 "github.com/open-neon/neon-operator/api/v1alpha1"
-	"github.com/open-neon/neon-operator/internal/controller"
+	corev1alpha1 "github.com/open-neon/neon-operator/pkg/api/v1alpha1"
+	"github.com/open-neon/neon-operator/pkg/controller"
 	// +kubebuilder:scaffold:imports
 )
 

@@ -21,12 +21,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-
 // NeonClusterSpec defines the desired state of NeonCluster.
 type NeonClusterSpec struct {
 	// +optional
 	SafeKeeper *SafeKeeperSpec `json:"safeKeeper,omitempty"`
-	
+
 	// +optional
 	Pageserver *PageServerSpec `json:"pageServer,omitempty"`
 
@@ -37,9 +36,9 @@ type NeonClusterSpec struct {
 // SafeKeeperSpec defines the desired state of Safekeeper.
 // It will be statefullset.
 type SafeKeeperSpec struct {
-	// +kubebuilder:default=1                                                                                                                                      
-    // +kubebuilder:validation:Minimum=1                                                                                                                           
-    // +optional                                                                                                                                                   
+	// +kubebuilder:default=1
+	// +kubebuilder:validation:Minimum=1
+	// +optional
 	MinReplicas *int64 `json:"minReplicas,omitempty"`
 
 	// +kubebuilder:default=1
@@ -54,9 +53,9 @@ type SafeKeeperSpec struct {
 // PageServerSpec defines the desired state of PageServerSpec.
 // It will be statefullSet.
 type PageServerSpec struct {
-	// +kubebuilder:default=1                                                                                                                                      
-    // +kubebuilder:validation:Minimum=1                                                                                                                           
-    // +optional                                                                                                                                                   
+	// +kubebuilder:default=1
+	// +kubebuilder:validation:Minimum=1
+	// +optional
 	MinReplicas *int64 `json:"minReplicas,omitempty"`
 
 	// +kubebuilder:default=1
@@ -71,9 +70,9 @@ type PageServerSpec struct {
 // StorageBrokerSpec defines the desired state of StorageBrokerSpec
 // It will be deployment.
 type StorageBrokerSpec struct {
-	// +kubebuilder:default=1                                                                                                                                      
-    // +kubebuilder:validation:Minimum=1                                                                                                                           
-    // +optional                                                                                                                                                   
+	// +kubebuilder:default=1
+	// +kubebuilder:validation:Minimum=1
+	// +optional
 	MinReplicas *int64 `json:"minReplicas,omitempty"`
 
 	// +kubebuilder:default=1

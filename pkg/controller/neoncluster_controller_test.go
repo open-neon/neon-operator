@@ -27,7 +27,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	corev1alpha1 "github.com/open-neon/neon-operator/api/v1alpha1"
+	corev1alpha1 "github.com/open-neon/neon-operator/pkg/api/v1alpha1"
 )
 
 var _ = Describe("NeonCluster Controller", func() {
