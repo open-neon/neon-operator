@@ -36,7 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	corev1alpha1 "github.com/open-neon/neon-operator/pkg/api/v1alpha1"
-	"github.com/open-neon/neon-operator/pkg/controller"
+	neonclusterController "github.com/open-neon/neon-operator/pkg/neon-cluster"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -178,7 +178,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := (&controller.NeonClusterReconciler{
+	if err := (&neonclusterController.NeonClusterReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
