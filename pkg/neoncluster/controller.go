@@ -32,17 +32,17 @@ const controllerName = "neoncluster-controller"
 // Operator manages lifecycle for NeonCluster resources.
 type Operator struct {
 	nclient client.Client
-	scheme *runtime.Scheme
-	logger *slog.Logger
+	scheme  *runtime.Scheme
+	logger  *slog.Logger
 }
 
 // New creates a new NeonCluster Controller.
 func New(logger *slog.Logger, client client.Client, scheme *runtime.Scheme) (*Operator, error) {
-   logger = logger.With("component", controllerName)
+	logger = logger.With("component", controllerName)
 	return &Operator{
-		logger: logger,
+		logger:  logger,
 		nclient: client,
-		scheme: scheme,
+		scheme:  scheme,
 	}, nil
 }
 
@@ -60,7 +60,7 @@ func New(logger *slog.Logger, client client.Client, scheme *runtime.Scheme) (*Op
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.22.4/pkg/reconcile
 func (r *Operator) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	
+
 	return ctrl.Result{}, nil
 }
 
