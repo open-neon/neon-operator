@@ -37,7 +37,7 @@ type Operator struct {
 }
 
 // New creates a new NeonCluster Controller.
-func New(logger *slog.Logger, client client.Client, scheme *runtime.Scheme) (*Operator, error) {
+func New(client client.Client, scheme *runtime.Scheme, logger *slog.Logger) (*Operator, error) {
 	logger = logger.With("component", controllerName)
 	return &Operator{
 		logger:  logger,
