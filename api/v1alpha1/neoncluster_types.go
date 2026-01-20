@@ -22,22 +22,21 @@ import (
 )
 
 
-// NeonClusterSpec defines the desired state of NeonCluster
+// NeonClusterSpec defines the desired state of NeonCluster.
 type NeonClusterSpec struct {
-	// +kubebuilder:default=1                                                                                                                                      
-    // +kubebuilder:validation:Minimum=1                                                                                                                           
-    // +optional    
-	Replicas *int64 `json:"replicas,omitempty"`
-
 	// +optional
-	Safekeeper SafekeeperSpec `json:"safekeeper,omitempty"`
+	SafeKeeper SafeKeeperSpec `json:"safeKeeper,omitempty"`
 	
 	// +optional
-	Pageserver PageserverSpec `json:"pageserver,omitempty"`
+	Pageserver PageServerSpec `json:"pageServer,omitempty"`
+
+	// +optional
+	StorageBroker StorageBrokerSpec `json:"storageBroker,omitempty"`
 }
 
-// SafekeeperSpec defines the desired state of Safekeeper
-type SafekeeperSpec struct {
+// SafeKeeperSpec defines the desired state of Safekeeper.
+// It will be statefullset.
+type SafeKeeperSpec struct {
 	// +kubebuilder:default=1                                                                                                                                      
     // +kubebuilder:validation:Minimum=1                                                                                                                           
     // +optional                                                                                                                                                   
@@ -52,8 +51,26 @@ type SafekeeperSpec struct {
 	Template v1.PodTemplateSpec `json:"template,omitempty"`
 }
 
-// SafekeeperSpec defines the desired state of Safekeeper
-type PageserverSpec struct {
+// PageServerSpec defines the desired state of PageServerSpec.
+// It will be statefullSet.
+type PageServerSpec struct {
+	// +kubebuilder:default=1                                                                                                                                      
+    // +kubebuilder:validation:Minimum=1                                                                                                                           
+    // +optional                                                                                                                                                   
+	MinReplicas *int64 `json:"minReplicas,omitempty"`
+
+	// +kubebuilder:default=1
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	MaxReplicas *int64 `json:"maxReplicas,omitempty"`
+
+	// +optional
+	Template v1.PodTemplateSpec `json:"template,omitempty"`
+}
+
+// StorageBrokerSpec defines the desired state of StorageBrokerSpec
+// It will be deployment.
+type StorageBrokerSpec struct {
 	// +kubebuilder:default=1                                                                                                                                      
     // +kubebuilder:validation:Minimum=1                                                                                                                           
     // +optional                                                                                                                                                   
@@ -70,9 +87,6 @@ type PageserverSpec struct {
 
 // NeonClusterStatus defines the observed state of NeonCluster.
 type NeonClusterStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// For Kubernetes API conventions, see:
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
 
