@@ -140,6 +140,7 @@ type StorageBrokerSpec struct {
 
 // +k8s:deepcopy-gen=true
 type CommonFields struct {
+	// kubebuilder:default="ghcr.io/neondatabase/neon:latest"
 	// +optional
 	Image *string `json:"image,omitempty"`
 	// imagePullPolicy defines the image pull policy for the 'prometheus', 'init-config-reloader' and 'config-reloader' containers.
