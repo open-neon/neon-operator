@@ -36,7 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	corev1alpha1 "github.com/open-neon/neon-operator/pkg/api/v1alpha1"
-	neonclusterController "github.com/open-neon/neon-operator/pkg/neon-cluster"
+	neonclusterController "github.com/open-neon/neon-operator/pkg/neoncluster"
 	// +kubebuilder:scaffold:imports
 )
 
