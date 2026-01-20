@@ -25,13 +25,13 @@ import (
 // NeonClusterSpec defines the desired state of NeonCluster.
 type NeonClusterSpec struct {
 	// +optional
-	SafeKeeper SafeKeeperSpec `json:"safeKeeper,omitempty"`
+	SafeKeeper *SafeKeeperSpec `json:"safeKeeper,omitempty"`
 	
 	// +optional
-	Pageserver PageServerSpec `json:"pageServer,omitempty"`
+	Pageserver *PageServerSpec `json:"pageServer,omitempty"`
 
 	// +optional
-	StorageBroker StorageBrokerSpec `json:"storageBroker,omitempty"`
+	StorageBroker *StorageBrokerSpec `json:"storageBroker,omitempty"`
 }
 
 // SafeKeeperSpec defines the desired state of Safekeeper.
@@ -48,7 +48,7 @@ type SafeKeeperSpec struct {
 	MaxReplicas *int64 `json:"maxReplicas,omitempty"`
 
 	// +optional
-	Template v1.PodTemplateSpec `json:"template,omitempty"`
+	Template *v1.PodTemplateSpec `json:"template,omitempty"`
 }
 
 // PageServerSpec defines the desired state of PageServerSpec.
@@ -65,7 +65,7 @@ type PageServerSpec struct {
 	MaxReplicas *int64 `json:"maxReplicas,omitempty"`
 
 	// +optional
-	Template v1.PodTemplateSpec `json:"template,omitempty"`
+	Template *v1.PodTemplateSpec `json:"template,omitempty"`
 }
 
 // StorageBrokerSpec defines the desired state of StorageBrokerSpec
@@ -82,7 +82,7 @@ type StorageBrokerSpec struct {
 	MaxReplicas *int64 `json:"maxReplicas,omitempty"`
 
 	// +optional
-	Template v1.PodTemplateSpec `json:"template,omitempty"`
+	Template *v1.PodTemplateSpec `json:"template,omitempty"`
 }
 
 // NeonClusterStatus defines the observed state of NeonCluster.
