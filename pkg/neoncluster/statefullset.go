@@ -46,6 +46,7 @@ func makePageServerStatefulSet(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSet, e
 			"neoncluster": nc.Name,
 			"app":         "pageserver",
 		}),
+		operator.WithOwner(nc),
 	)
 
 	return statefulSet, nil
@@ -173,6 +174,7 @@ func makeSafekeeperStatefulSet(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSet, e
 			"neoncluster": nc.Name,
 			"app":         "safekeeper",
 		}),
+		operator.WithOwner(nc),
 	)
 
 	return statefulSet, nil

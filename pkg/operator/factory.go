@@ -2,6 +2,7 @@ package operator
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // ManagedByLabelValue is the name of this operator.
@@ -67,5 +68,27 @@ func UpdateObject(o metav1.Object, opts ...ObjectOption) {
 
 	for _, opt := range opts {
 		opt(o)
+	}
+}
+
+type Owner interface {
+	metav1.ObjectMetaAccessor
+	schema.ObjectKind
+}
+
+// WithOwner adds the given object to the list of owner references.
+func WithOwner(owner Owner) ObjectOption {
+	return func(o metav1.Object) {
+		o.SetOwnerReferences(
+			append(
+				o.GetOwnerReferences(),
+				metav1.OwnerReference{
+					APIVersion: owner.GroupVersionKind().GroupVersion().String(),
+					Kind:       owner.GroupVersionKind().Kind,
+					Name:       owner.GetObjectMeta().GetName(),
+					UID:        owner.GetObjectMeta().GetUID(),
+				},
+			),
+		)
 	}
 }

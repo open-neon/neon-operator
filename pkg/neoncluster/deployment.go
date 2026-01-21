@@ -41,6 +41,7 @@ func makeSafekeeperDeployment(nc *v1alpha1.NeonCluster) (*appsv1.Deployment, err
 			"neoncluster": nc.Name,
 			"app":         "safekeeper",
 		}),
+		operator.WithOwner(nc),
 	)
 
 	return deployment, nil

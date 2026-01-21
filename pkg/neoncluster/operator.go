@@ -55,7 +55,7 @@ func (r *Operator) sync(ctx context.Context, name string, namespace string) erro
 	if err != nil {
 		return err
 	}
-	
+
 	err = r.updateSafekeeper(ctx, nc)
 	if err != nil {
 		return err
