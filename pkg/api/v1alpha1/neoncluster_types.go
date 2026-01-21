@@ -32,13 +32,13 @@ const (
 // +k8s:openapi-gen=true
 type NeonClusterSpec struct {
 	// +optional
-	SafeKeeper *SafeKeeperSpec `json:"safeKeeper,omitempty"`
+	SafeKeeper SafeKeeperSpec `json:"safeKeeper,omitempty"`
 
 	// +optional
-	Pageserver *PageServerSpec `json:"pageServer,omitempty"`
+	Pageserver PageServerSpec `json:"pageServer,omitempty"`
 
 	// +optional
-	StorageBroker *StorageBrokerSpec `json:"storageBroker,omitempty"`
+	StorageBroker StorageBrokerSpec `json:"storageBroker,omitempty"`
 
 	ObjectStorage ObjectStorageSpec `json:"objectStorage"`
 }
@@ -182,6 +182,11 @@ type CommonFields struct {
 	// +kubebuilder:validation:Enum="";Always;Never;IfNotPresent
 	// +optional
 	ImagePullPolicy v1.PullPolicy `json:"imagePullPolicy,omitempty"`
+	// imagePullSecrets defines an optional list of references to Secrets in the same namespace
+	// to use for pulling images from registries.
+	// See http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+	// +optional
+	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
 	// resources defines the resources requests and limits of the 'prometheus' container.
 	// +optional
