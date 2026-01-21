@@ -28,6 +28,8 @@ const (
 	NeonDefaultImage = "ghcr.io/neondatabase/neon:latest"
 )
 
+// makePageServerStatefullSet creates a StatefulSet for the Page Server component
+// based on the provided NeonCluster specification.
 func makePageServerStatefullSet(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSet, error) {
 	spec, err := makePageServerStatefullSetSpec(nc)
 	if err != nil {
@@ -152,3 +154,4 @@ func makePageServerStatefullSetSpec(nc *v1alpha1.NeonCluster) (*appsv1.StatefulS
 
 	return &spec, nil
 }
+
