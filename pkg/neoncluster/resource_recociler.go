@@ -78,34 +78,3 @@ func (r *Operator) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *Operator) sync(ctx context.Context, name string, namespace string) error {
-	nc, err := r.getNeonCluster(ctx, name, namespace)
-	if err != nil {
-		return err 
-	}
-
-    if( nc == nil ) {
-		return nil
-	}
-
-	key := fmt.Sprintf("%s/%s", namespace, name)
-
-	logger := r.logger.With("key", key)
-
-	logger.Info("Sync neoncluster")
-
-	
-}
-
-func (r *Operator) getNeonCluster(ctx context.Context, name string, namespace string) (*corev1alpha1.NeonCluster, error) {
-	nc := &corev1alpha1.NeonCluster{}
-	err := r.nclient.Get(ctx, client.ObjectKey{
-		Name:      name,
-		Namespace: namespace,
-	}, nc)
-	if err != nil {
-		return nil, err
-	}
-
-	return nc.DeepCopy(), nil
-}
