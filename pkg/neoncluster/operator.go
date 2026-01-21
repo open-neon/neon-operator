@@ -52,6 +52,16 @@ func (r *Operator) sync(ctx context.Context, name string, namespace string) erro
 	logger.Info("Sync neoncluster")
 
 	err = r.updatePageServer(ctx, nc)
+	if err != nil {
+		return err
+	}
+	
+	err = r.updateSafekeeper(ctx, nc)
+	if err != nil {
+		return err
+	}
+
+	err = r.updateStorageBroker(ctx, nc)
 	return err
 }
 
