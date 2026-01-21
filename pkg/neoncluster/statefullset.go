@@ -29,10 +29,10 @@ const (
 	InputHashAnnotationKey = "neon.io/input-hash"
 )
 
-// makePageServerStatefullSet creates a StatefulSet for the Page Server component
+// makePageServerStatefulSet creates a StatefulSet for the Page Server component
 // based on the provided NeonCluster specification.
-func makePageServerStatefullSet(nc *v1alpha1.NeonCluster, inputHash string) (*appsv1.StatefulSet, error) {
-	spec, err := makePageServerStatefullSetSpec(nc)
+func makePageServerStatefulSet(nc *v1alpha1.NeonCluster, inputHash string) (*appsv1.StatefulSet, error) {
+	spec, err := makePageServerStatefulSetSpec(nc)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func makePageServerStatefullSet(nc *v1alpha1.NeonCluster, inputHash string) (*ap
 	return statefulSet, nil
 }
 
-func makePageServerStatefullSetSpec(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSetSpec, error) {
+func makePageServerStatefulSetSpec(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSetSpec, error) {
 	cpf := nc.Spec.Pageserver.CommonFields
 	ps := nc.Spec.Pageserver
 

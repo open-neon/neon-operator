@@ -19,33 +19,13 @@ package neoncluster
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1alpha1 "github.com/open-neon/neon-operator/pkg/api/v1alpha1"
 )
 
 const controllerName = "neoncluster-controller"
-
-// Operator manages lifecycle for NeonCluster resources.
-type Operator struct {
-	nclient client.Client
-	scheme  *runtime.Scheme
-	logger  *slog.Logger
-}
-
-// New creates a new NeonCluster Controller.
-func New(client client.Client, scheme *runtime.Scheme, logger *slog.Logger) (*Operator, error) {
-	logger = logger.With("component", controllerName)
-	return &Operator{
-		logger:  logger,
-		nclient: client,
-		scheme:  scheme,
-	}, nil
-}
 
 // +kubebuilder:rbac:groups=core.open-neon.io,resources=neonclusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core.open-neon.io,resources=neonclusters/status,verbs=get;update;patch
