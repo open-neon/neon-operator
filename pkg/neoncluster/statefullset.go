@@ -18,6 +18,7 @@ package neoncluster
 
 import (
 	"github.com/open-neon/neon-operator/pkg/api/v1alpha1"
+	"github.com/open-neon/neon-operator/pkg/operator"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,17 +35,15 @@ func makePageServerStatefullSet(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSet, 
 	}
 
 	statefulSet := &appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pageserver-" + nc.Name,
-			Namespace: nc.Namespace,
-			Labels: map[string]string{
-				"app":         "pageserver",
-				"component":   "pageserver",
-				"neoncluster": nc.Name,
-			},
-		},
 		Spec: *spec,
 	}
+
+	operator.UpdateObject(statefulSet,
+		operator.WithLabels(map[string]string{
+			"neoncluster": nc.Name,
+			"app":         "pageserver",
+		}),
+	)
 
 	return statefulSet, nil
 }
@@ -53,7 +52,6 @@ func makePageServerStatefullSetSpec(nc *v1alpha1.NeonCluster) (*appsv1.StatefulS
 	cpf := nc.Spec.Pageserver.CommonFields
 	ps := nc.Spec.Pageserver
 
-	// Set default image if not specified
 	image := NeonDefaultImage
 	if cpf.Image != nil {
 		image = *cpf.Image
@@ -72,7 +70,6 @@ func makePageServerStatefullSetSpec(nc *v1alpha1.NeonCluster) (*appsv1.StatefulS
 		"neoncluster": nc.Name,
 	}
 
-	// Build container
 	container := corev1.Container{
 		Name:            "pageserver",
 		Image:           image,
@@ -91,7 +88,6 @@ func makePageServerStatefullSetSpec(nc *v1alpha1.NeonCluster) (*appsv1.StatefulS
 		}
 	}
 
-	// Build pod template spec
 	podTemplateSpec := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: labels,
@@ -125,7 +121,6 @@ func makePageServerStatefullSetSpec(nc *v1alpha1.NeonCluster) (*appsv1.StatefulS
 		}
 	}
 
-	// Build StatefulSet spec
 	spec := appsv1.StatefulSetSpec{
 		Replicas: &replicas,
 		Selector: &metav1.LabelSelector{
