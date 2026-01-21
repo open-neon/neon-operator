@@ -155,3 +155,129 @@ func makePageServerStatefullSetSpec(nc *v1alpha1.NeonCluster) (*appsv1.StatefulS
 	return &spec, nil
 }
 
+// makeSafekeeperStatefulSet creates a StatefulSet for the Safekeeper component
+// based on the provided NeonCluster specification.
+func makeSafekeeperStatefulSet(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSet, error) {
+	spec, err := makeSafekeeperStatefulSetSpec(nc)
+	if err != nil {
+		return nil, err
+	}
+
+	statefulSet := &appsv1.StatefulSet{
+		Spec: *spec,
+	}
+
+	operator.UpdateObject(statefulSet,
+		operator.WithLabels(map[string]string{
+			"neoncluster": nc.Name,
+			"app":         "safekeeper",
+		}),
+	)
+
+	return statefulSet, nil
+}
+
+func makeSafekeeperStatefulSetSpec(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSetSpec, error) {
+	cpf := nc.Spec.SafeKeeper.CommonFields
+	sk := nc.Spec.SafeKeeper
+
+	image := NeonDefaultImage
+	if cpf.Image != nil {
+		image = *cpf.Image
+	}
+
+	// Set replicas (using MinReplicas as the desired count)
+	replicas := int32(3)
+	if sk.MinReplicas != nil {
+		replicas = int32(*sk.MinReplicas)
+	}
+
+	// Build pod labels
+	labels := map[string]string{
+		"app":         "safekeeper",
+		"component":   "safekeeper",
+		"neoncluster": nc.Name,
+	}
+
+	container := corev1.Container{
+		Name:            "safekeeper",
+		Image:           image,
+		ImagePullPolicy: cpf.ImagePullPolicy,
+		Resources:       cpf.Resources,
+		VolumeMounts:    sk.VolumeMounts,
+	}
+
+	// Add storage volume mount if storage is specified
+	if sk.Storage != nil {
+		if sk.Storage.EmptyDir == nil && sk.Storage.Ephemeral == nil {
+			container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+				Name:      "data",
+				MountPath: "/data",
+			})
+		}
+	}
+
+	podTemplateSpec := corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: labels,
+		},
+		Spec: corev1.PodSpec{
+			Containers:       []corev1.Container{container},
+			ImagePullSecrets: cpf.ImagePullSecrets,
+			NodeSelector:     cpf.NodeSelector,
+			Affinity:         cpf.Affinity,
+			SecurityContext:  cpf.SecurityContext,
+			Volumes:          sk.Volumes,
+		},
+	}
+
+	// Add storage volumes if specified
+	if sk.Storage != nil {
+		if sk.Storage.EmptyDir != nil {
+			podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
+				Name: "data",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: sk.Storage.EmptyDir,
+				},
+			})
+		} else if sk.Storage.Ephemeral != nil {
+			podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
+				Name: "data",
+				VolumeSource: corev1.VolumeSource{
+					Ephemeral: sk.Storage.Ephemeral,
+				},
+			})
+		}
+	}
+
+	spec := appsv1.StatefulSetSpec{
+		Replicas: &replicas,
+		Selector: &metav1.LabelSelector{
+			MatchLabels: labels,
+		},
+		ServiceName:                          "safekeeper",
+		Template:                             podTemplateSpec,
+		PersistentVolumeClaimRetentionPolicy: sk.PersistentVolumeClaimRetentionPolicy,
+	}
+
+	// Add VolumeClaimTemplates if persistent storage is configured
+	if sk.Storage != nil && sk.Storage.EmptyDir == nil && sk.Storage.Ephemeral == nil {
+		pvc := sk.Storage.VolumeClaimTemplate
+		if pvc.EmbeddedObjectMetadata.Name == "" {
+			pvc.EmbeddedObjectMetadata.Name = "data"
+		}
+
+		spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        pvc.EmbeddedObjectMetadata.Name,
+					Labels:      pvc.EmbeddedObjectMetadata.Labels,
+					Annotations: pvc.EmbeddedObjectMetadata.Annotations,
+				},
+				Spec: pvc.Spec,
+			},
+		}
+	}
+
+	return &spec, nil
+}
