@@ -18,6 +18,7 @@ package neoncluster
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -65,8 +66,8 @@ func New(client client.Client, scheme *runtime.Scheme, logger *slog.Logger) (*Op
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.22.4/pkg/reconcile
 func (r *Operator) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-
-	return ctrl.Result{}, nil
+	err := r.sync(ctx, req.Name, req.Namespace)
+	return ctrl.Result{}, fmt.Errorf("Failed to sync neoncluster %s/%s: %w", req.Namespace, req.Name, err)
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -75,4 +76,36 @@ func (r *Operator) SetupWithManager(mgr ctrl.Manager) error {
 		For(&corev1alpha1.NeonCluster{}).
 		Named("neoncluster").
 		Complete(r)
+}
+
+func (r *Operator) sync(ctx context.Context, name string, namespace string) error {
+	nc, err := r.getNeonCluster(ctx, name, namespace)
+	if err != nil {
+		return err 
+	}
+
+    if( nc == nil ) {
+		return nil
+	}
+
+	key := fmt.Sprintf("%s/%s", namespace, name)
+
+	logger := r.logger.With("key", key)
+
+	logger.Info("Sync neoncluster")
+
+	
+}
+
+func (r *Operator) getNeonCluster(ctx context.Context, name string, namespace string) (*corev1alpha1.NeonCluster, error) {
+	nc := &corev1alpha1.NeonCluster{}
+	err := r.nclient.Get(ctx, client.ObjectKey{
+		Name:      name,
+		Namespace: namespace,
+	}, nc)
+	if err != nil {
+		return nil, err
+	}
+
+	return nc.DeepCopy(), nil
 }
