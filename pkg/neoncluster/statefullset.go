@@ -31,7 +31,7 @@ const (
 
 // makePageServerStatefulSet creates a StatefulSet for the Page Server component
 // based on the provided NeonCluster specification.
-func makePageServerStatefulSet(nc *v1alpha1.NeonCluster, inputHash string) (*appsv1.StatefulSet, error) {
+func makePageServerStatefulSet(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSet, error) {
 	spec, err := makePageServerStatefulSetSpec(nc)
 	if err != nil {
 		return nil, err
@@ -45,9 +45,6 @@ func makePageServerStatefulSet(nc *v1alpha1.NeonCluster, inputHash string) (*app
 		operator.WithLabels(map[string]string{
 			"neoncluster": nc.Name,
 			"app":         "pageserver",
-		}),
-		operator.WithAnnotations(map[string]string{
-			InputHashAnnotationKey: inputHash,
 		}),
 	)
 
@@ -161,7 +158,7 @@ func makePageServerStatefulSetSpec(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSe
 
 // makeSafekeeperStatefulSet creates a StatefulSet for the Safekeeper component
 // based on the provided NeonCluster specification.
-func makeSafekeeperStatefulSet(nc *v1alpha1.NeonCluster, inputHash string) (*appsv1.StatefulSet, error) {
+func makeSafekeeperStatefulSet(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSet, error) {
 	spec, err := makeSafekeeperStatefulSetSpec(nc)
 	if err != nil {
 		return nil, err
@@ -175,9 +172,6 @@ func makeSafekeeperStatefulSet(nc *v1alpha1.NeonCluster, inputHash string) (*app
 		operator.WithLabels(map[string]string{
 			"neoncluster": nc.Name,
 			"app":         "safekeeper",
-		}),
-		operator.WithAnnotations(map[string]string{
-			InputHashAnnotationKey: inputHash,
 		}),
 	)
 

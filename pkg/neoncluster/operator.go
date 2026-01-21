@@ -6,7 +6,6 @@ import (
 	"log/slog"
 
 	"github.com/mitchellh/hashstructure"
-	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -58,12 +57,9 @@ func (r *Operator) sync(ctx context.Context, name string, namespace string) erro
 	logger := r.logger.With("key", key)
 
 	logger.Info("Sync neoncluster")
-	ssetcl := r.kclient.AppsV1().StatefulSets(nc.Namespace)
-	deploycl := r.kclient.AppsV1().Deployments(nc.Namespace)
 
-	err := r.updatePageServer()
-	return nil
-
+	err = r.updatePageServer(ctx, nc)
+	return err
 }
 
 func (r *Operator) getNeonCluster(ctx context.Context, name string, namespace string) (*corev1alpha1.NeonCluster, error) {
@@ -88,25 +84,29 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 		return fmt.Errorf("failed to get pageserver statefulset: %w", err)
 	}
 
-	sset, err := makePageServerStatefulSetSpec(nc)
+	sset, err := makePageServerStatefulSet(nc)
 	if err != nil {
 		return fmt.Errorf("failed to create pageserver statefulset spec: %w", err)
 	}
 
-	hash, err := createInputHash(sset)
+	hash, err := createInputHash(sset, sset.Spec)
 	if err != nil {
 		return fmt.Errorf("failed to create input hash for pageserver: %w", err)
 	}
 
 	// If StatefulSet doesn't exist, create it
 	if notFound {
-		newSS, err := makePageServerStatefulSet(nc, hash)
+		newSS, err := makePageServerStatefulSet(nc)
 		if err != nil {
 			return fmt.Errorf("failed to create pageserver statefulset: %w", err)
 		}
 
 		newSS.Name = fmt.Sprintf("%s-pageserver", nc.Name)
 		newSS.Namespace = nc.Namespace
+		if newSS.Annotations == nil {
+			newSS.Annotations = make(map[string]string)
+		}
+		newSS.Annotations[InputHashAnnotationKey] = hash
 
 		if _, err := r.kclient.AppsV1().StatefulSets(nc.Namespace).Create(ctx, newSS, metav1.CreateOptions{}); err != nil {
 			return fmt.Errorf("failed to create pageserver statefulset: %w", err)
@@ -123,7 +123,7 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 	}
 
 	// Create new StatefulSet with updated spec
-	newSS, err := makePageServerStatefulSet(nc, hash)
+	newSS, err := makePageServerStatefulSet(nc)
 	if err != nil {
 		return fmt.Errorf("failed to create pageserver statefulset: %w", err)
 	}
@@ -133,6 +133,10 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 	newSS.Namespace = pg.Namespace
 	newSS.ResourceVersion = pg.ResourceVersion
 	newSS.UID = pg.UID
+	if newSS.Annotations == nil {
+		newSS.Annotations = make(map[string]string)
+	}
+	newSS.Annotations[InputHashAnnotationKey] = hash
 
 	// Update the StatefulSet
 	if _, err := r.kclient.AppsV1().StatefulSets(nc.Namespace).Update(ctx, newSS, metav1.UpdateOptions{}); err != nil {
@@ -143,7 +147,16 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 	return nil
 }
 
-func createInputHash(spec interface{}) (string, error) {
+func createInputHash(obj WorkloadObject, spec interface{}) (string, error) {
+	// Get all annotations and exclude the input hash annotation
+	annotations := obj.GetAnnotations()
+	filteredAnnotations := make(map[string]string)
+	for k, v := range annotations {
+		if k != InputHashAnnotationKey {
+			filteredAnnotations[k] = v
+		}
+	}
+
 	hash, err := hashstructure.Hash(struct {
 		Labels      map[string]string
 		Annotations map[string]string
@@ -151,7 +164,7 @@ func createInputHash(spec interface{}) (string, error) {
 		Spec        interface{}
 	}{
 		Labels:      obj.GetLabels(),
-		Annotations: obj.GetAnnotations(),
+		Annotations: filteredAnnotations,
 		Generation:  obj.GetGeneration(),
 		Spec:        spec,
 	}, nil)
