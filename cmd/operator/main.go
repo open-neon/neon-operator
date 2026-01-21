@@ -185,7 +185,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	nco, err := neonclusterController.New(mgr.GetClient(), mgr.GetScheme(), logger)
+	nco, err := neonclusterController.New(mgr.GetClient(), mgr.GetScheme(), logger, mgr.GetConfig())
 	if err != nil {
 		logger.Error("unable to create controller", "error", err, "controller", "NeonCluster")
 		os.Exit(1)

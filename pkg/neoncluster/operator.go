@@ -10,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/open-neon/neon-operator/pkg/api/v1alpha1"
@@ -25,11 +26,19 @@ type Operator struct {
 }
 
 // New creates a new NeonCluster Controller.
-func New(client client.Client, scheme *runtime.Scheme, logger *slog.Logger) (*Operator, error) {
+func New(client client.Client, scheme *runtime.Scheme, logger *slog.Logger, config *rest.Config) (*Operator, error) {
 	logger = logger.With("component", controllerName)
+
+	// Create kubernetes clientset for direct client-go operations
+	kclient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kubernetes clientset: %w", err)
+	}
+
 	return &Operator{
 		logger:  logger,
 		nclient: client,
+		kclient: kclient,
 		scheme:  scheme,
 	}, nil
 }
