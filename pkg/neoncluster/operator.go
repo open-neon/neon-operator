@@ -21,10 +21,10 @@ type WorkloadObject interface {
 func (r *Operator) sync(ctx context.Context, name string, namespace string) error {
 	nc, err := r.getNeonCluster(ctx, name, namespace)
 	if err != nil {
-		return err 
+		return err
 	}
 
-    if( nc == nil ) {
+	if nc == nil {
 		return nil
 	}
 
@@ -34,9 +34,8 @@ func (r *Operator) sync(ctx context.Context, name string, namespace string) erro
 
 	logger.Info("Sync neoncluster")
 
-	return  nil
+	return nil
 
-	
 }
 
 func (r *Operator) getNeonCluster(ctx context.Context, name string, namespace string) (*corev1alpha1.NeonCluster, error) {

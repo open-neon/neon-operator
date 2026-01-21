@@ -77,4 +77,3 @@ func (r *Operator) SetupWithManager(mgr ctrl.Manager) error {
 		Named("neoncluster").
 		Complete(r)
 }
-

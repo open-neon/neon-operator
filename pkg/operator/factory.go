@@ -44,6 +44,18 @@ func WithLabels(labels map[string]string) ObjectOption {
 	}
 }
 
+// WithAnnotations merges the given annotations with the existing object's annotations.
+// The given annotations take precedence over the existing ones.
+func WithAnnotations(annotations map[string]string) ObjectOption {
+	return func(o metav1.Object) {
+		a := Map{}
+		a = a.Merge(annotations)
+		a = a.Merge(o.GetAnnotations())
+
+		o.SetAnnotations(a)
+	}
+}
+
 // UpdateObject updates the object's metadata with the provided options. It
 // automatically injects the "managed-by" and "app.kubernetes.io/managed-by"
 // labels which identifies the operator as the managing entity.

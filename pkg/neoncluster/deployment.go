@@ -129,4 +129,3 @@ func makeSafekeeperDeploymentSpec(nc *v1alpha1.NeonCluster) (*appsv1.DeploymentS
 
 	return &spec, nil
 }
-

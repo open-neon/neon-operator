@@ -25,12 +25,13 @@ import (
 )
 
 const (
-	NeonDefaultImage = "ghcr.io/neondatabase/neon:latest"
+	NeonDefaultImage       = "ghcr.io/neondatabase/neon:latest"
+	InputHashAnnotationKey = "neon.io/input-hash"
 )
 
 // makePageServerStatefullSet creates a StatefulSet for the Page Server component
 // based on the provided NeonCluster specification.
-func makePageServerStatefullSet(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSet, error) {
+func makePageServerStatefullSet(nc *v1alpha1.NeonCluster, inputHash string) (*appsv1.StatefulSet, error) {
 	spec, err := makePageServerStatefullSetSpec(nc)
 	if err != nil {
 		return nil, err
@@ -44,6 +45,9 @@ func makePageServerStatefullSet(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSet, 
 		operator.WithLabels(map[string]string{
 			"neoncluster": nc.Name,
 			"app":         "pageserver",
+		}),
+		operator.WithAnnotations(map[string]string{
+			InputHashAnnotationKey: inputHash,
 		}),
 	)
 
@@ -157,7 +161,7 @@ func makePageServerStatefullSetSpec(nc *v1alpha1.NeonCluster) (*appsv1.StatefulS
 
 // makeSafekeeperStatefulSet creates a StatefulSet for the Safekeeper component
 // based on the provided NeonCluster specification.
-func makeSafekeeperStatefulSet(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSet, error) {
+func makeSafekeeperStatefulSet(nc *v1alpha1.NeonCluster, inputHash string) (*appsv1.StatefulSet, error) {
 	spec, err := makeSafekeeperStatefulSetSpec(nc)
 	if err != nil {
 		return nil, err
@@ -171,6 +175,9 @@ func makeSafekeeperStatefulSet(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSet, e
 		operator.WithLabels(map[string]string{
 			"neoncluster": nc.Name,
 			"app":         "safekeeper",
+		}),
+		operator.WithAnnotations(map[string]string{
+			InputHashAnnotationKey: inputHash,
 		}),
 	)
 
