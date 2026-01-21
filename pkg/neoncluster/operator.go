@@ -24,13 +24,6 @@ type Operator struct {
 	logger  *slog.Logger
 }
 
-// WorkloadObject is an interface that abstracts pageserver, safekeeper, and strogebroker objects.
-type WorkloadObject interface {
-	GetLabels() map[string]string
-	GetAnnotations() map[string]string
-	GetGeneration() int64
-}
-
 // New creates a new NeonCluster Controller.
 func New(client client.Client, scheme *runtime.Scheme, logger *slog.Logger) (*Operator, error) {
 	logger = logger.With("component", controllerName)
@@ -84,22 +77,27 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 		return fmt.Errorf("failed to get pageserver statefulset: %w", err)
 	}
 
+	if !notFound {
+		pg = pg.DeepCopy()
+	}
+
 	sset, err := makePageServerStatefulSet(nc)
 	if err != nil {
 		return fmt.Errorf("failed to create pageserver statefulset spec: %w", err)
 	}
 
-	hash, err := createInputHash(sset, sset.Spec)
+	hash, err := createInputHash(sset.ObjectMeta, sset.Spec)
 	if err != nil {
 		return fmt.Errorf("failed to create input hash for pageserver: %w", err)
 	}
 
+	newSS, err := makePageServerStatefulSet(nc)
+	if err != nil {
+		return fmt.Errorf("failed to create pageserver statefulset: %w", err)
+	}
+
 	// If StatefulSet doesn't exist, create it
 	if notFound {
-		newSS, err := makePageServerStatefulSet(nc)
-		if err != nil {
-			return fmt.Errorf("failed to create pageserver statefulset: %w", err)
-		}
 
 		newSS.Name = fmt.Sprintf("%s-pageserver", nc.Name)
 		newSS.Namespace = nc.Namespace
@@ -122,12 +120,6 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 		return nil
 	}
 
-	// Create new StatefulSet with updated spec
-	newSS, err := makePageServerStatefulSet(nc)
-	if err != nil {
-		return fmt.Errorf("failed to create pageserver statefulset: %w", err)
-	}
-
 	// Preserve existing fields that shouldn't be overwritten
 	newSS.Name = pg.Name
 	newSS.Namespace = pg.Namespace
@@ -147,11 +139,10 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 	return nil
 }
 
-func createInputHash(obj WorkloadObject, spec interface{}) (string, error) {
+func createInputHash(objMeta metav1.ObjectMeta, spec interface{}) (string, error) {
 	// Get all annotations and exclude the input hash annotation
-	annotations := obj.GetAnnotations()
 	filteredAnnotations := make(map[string]string)
-	for k, v := range annotations {
+	for k, v := range objMeta.Annotations {
 		if k != InputHashAnnotationKey {
 			filteredAnnotations[k] = v
 		}
@@ -163,9 +154,9 @@ func createInputHash(obj WorkloadObject, spec interface{}) (string, error) {
 		Generation  int64
 		Spec        interface{}
 	}{
-		Labels:      obj.GetLabels(),
+		Labels:      objMeta.Labels,
 		Annotations: filteredAnnotations,
-		Generation:  obj.GetGeneration(),
+		Generation:  objMeta.Generation,
 		Spec:        spec,
 	}, nil)
 	if err != nil {
