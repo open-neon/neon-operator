@@ -139,6 +139,148 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 	return nil
 }
 
+func (r *Operator) updateSafekeeper(ctx context.Context, nc *v1alpha1.NeonCluster) error {
+
+	sk, err := r.kclient.AppsV1().StatefulSets(nc.Namespace).Get(ctx, fmt.Sprintf("%s-safekeeper", nc.Name), metav1.GetOptions{})
+	notFound := apierrors.IsNotFound(err)
+
+	if err != nil && !notFound {
+		return fmt.Errorf("failed to get safekeeper statefulset: %w", err)
+	}
+
+	if !notFound {
+		sk = sk.DeepCopy()
+	}
+
+	sset, err := makeSafekeeperStatefulSet(nc)
+	if err != nil {
+		return fmt.Errorf("failed to create safekeeper statefulset spec: %w", err)
+	}
+
+	hash, err := createInputHash(sset.ObjectMeta, sset.Spec)
+	if err != nil {
+		return fmt.Errorf("failed to create input hash for safekeeper: %w", err)
+	}
+
+	newSS, err := makeSafekeeperStatefulSet(nc)
+	if err != nil {
+		return fmt.Errorf("failed to create safekeeper statefulset: %w", err)
+	}
+
+	// If StatefulSet doesn't exist, create it
+	if notFound {
+
+		newSS.Name = fmt.Sprintf("%s-safekeeper", nc.Name)
+		newSS.Namespace = nc.Namespace
+		if newSS.Annotations == nil {
+			newSS.Annotations = make(map[string]string)
+		}
+		newSS.Annotations[InputHashAnnotationKey] = hash
+
+		if _, err := r.kclient.AppsV1().StatefulSets(nc.Namespace).Create(ctx, newSS, metav1.CreateOptions{}); err != nil {
+			return fmt.Errorf("failed to create safekeeper statefulset: %w", err)
+		}
+
+		r.logger.Info("safekeeper statefulset created successfully")
+		return nil
+	}
+
+	// Check if the input hash has changed
+	if sk.Annotations[InputHashAnnotationKey] == hash {
+		r.logger.Info("safekeeper statefulset is up to date")
+		return nil
+	}
+
+	// Preserve existing fields that shouldn't be overwritten
+	newSS.Name = sk.Name
+	newSS.Namespace = sk.Namespace
+	newSS.ResourceVersion = sk.ResourceVersion
+	newSS.UID = sk.UID
+	if newSS.Annotations == nil {
+		newSS.Annotations = make(map[string]string)
+	}
+	newSS.Annotations[InputHashAnnotationKey] = hash
+
+	// Update the StatefulSet
+	if _, err := r.kclient.AppsV1().StatefulSets(nc.Namespace).Update(ctx, newSS, metav1.UpdateOptions{}); err != nil {
+		return fmt.Errorf("failed to update safekeeper statefulset: %w", err)
+	}
+
+	r.logger.Info("safekeeper statefulset updated successfully")
+	return nil
+}
+
+func (r *Operator) updateStorageBroker(ctx context.Context, nc *v1alpha1.NeonCluster) error {
+
+	sb, err := r.kclient.AppsV1().Deployments(nc.Namespace).Get(ctx, fmt.Sprintf("%s-storage-broker", nc.Name), metav1.GetOptions{})
+	notFound := apierrors.IsNotFound(err)
+
+	if err != nil && !notFound {
+		return fmt.Errorf("failed to get storage broker deployment: %w", err)
+	}
+
+	if !notFound {
+		sb = sb.DeepCopy()
+	}
+
+	deploy, err := makeSafekeeperDeployment(nc)
+	if err != nil {
+		return fmt.Errorf("failed to create storage broker deployment spec: %w", err)
+	}
+
+	hash, err := createInputHash(deploy.ObjectMeta, deploy.Spec)
+	if err != nil {
+		return fmt.Errorf("failed to create input hash for storage broker: %w", err)
+	}
+
+	newDeploy, err := makeSafekeeperDeployment(nc)
+	if err != nil {
+		return fmt.Errorf("failed to create storage broker deployment: %w", err)
+	}
+
+	// If Deployment doesn't exist, create it
+	if notFound {
+
+		newDeploy.Name = fmt.Sprintf("%s-storage-broker", nc.Name)
+		newDeploy.Namespace = nc.Namespace
+		if newDeploy.Annotations == nil {
+			newDeploy.Annotations = make(map[string]string)
+		}
+		newDeploy.Annotations[InputHashAnnotationKey] = hash
+
+		if _, err := r.kclient.AppsV1().Deployments(nc.Namespace).Create(ctx, newDeploy, metav1.CreateOptions{}); err != nil {
+			return fmt.Errorf("failed to create storage broker deployment: %w", err)
+		}
+
+		r.logger.Info("storage broker deployment created successfully")
+		return nil
+	}
+
+	// Check if the input hash has changed
+	if sb.Annotations[InputHashAnnotationKey] == hash {
+		r.logger.Info("storage broker deployment is up to date")
+		return nil
+	}
+
+	// Preserve existing fields that shouldn't be overwritten
+	newDeploy.Name = sb.Name
+	newDeploy.Namespace = sb.Namespace
+	newDeploy.ResourceVersion = sb.ResourceVersion
+	newDeploy.UID = sb.UID
+	if newDeploy.Annotations == nil {
+		newDeploy.Annotations = make(map[string]string)
+	}
+	newDeploy.Annotations[InputHashAnnotationKey] = hash
+
+	// Update the Deployment
+	if _, err := r.kclient.AppsV1().Deployments(nc.Namespace).Update(ctx, newDeploy, metav1.UpdateOptions{}); err != nil {
+		return fmt.Errorf("failed to update storage broker deployment: %w", err)
+	}
+
+	r.logger.Info("storage broker deployment updated successfully")
+	return nil
+}
+
 func createInputHash(objMeta metav1.ObjectMeta, spec interface{}) (string, error) {
 	// Get all annotations and exclude the input hash annotation
 	filteredAnnotations := make(map[string]string)
