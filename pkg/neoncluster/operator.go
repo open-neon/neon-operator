@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/mitchellh/hashstructure"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,6 +31,7 @@ import (
 
 	"github.com/open-neon/neon-operator/pkg/api/v1alpha1"
 	corev1alpha1 "github.com/open-neon/neon-operator/pkg/api/v1alpha1"
+	"github.com/open-neon/neon-operator/pkg/operator"
 )
 
 // Operator manages lifecycle for NeonCluster resources.
@@ -82,23 +83,21 @@ func (r *Operator) sync(ctx context.Context, name string, namespace string) erro
 
 	logger.Info("Sync neoncluster")
 
-	_, err = r.getProfiles(ctx, nc)
+	pf, err := r.getProfiles(ctx, nc)
 	if err != nil {
 		return err
 	}
 
-	err = r.updatePageServer(ctx, nc)
-	if err != nil {
+	if err := r.updatePageServer(ctx, nc, pf.pageServer, logger); err != nil {
 		return err
 	}
 
-	err = r.updateSafekeeper(ctx, nc)
-	if err != nil {
+	if err := r.updateSafeKeeper(ctx, nc, pf.safeKeeper, logger); err != nil {
 		return err
 	}
 
-	err = r.updateStorageBroker(ctx, nc)
-	return err
+	return r.updateStorageBroker(ctx, nc, pf.storageBroker, logger)
+
 }
 
 func (r *Operator) getNeonCluster(ctx context.Context, name string, namespace string) (*corev1alpha1.NeonCluster, error) {
@@ -114,242 +113,221 @@ func (r *Operator) getNeonCluster(ctx context.Context, name string, namespace st
 	return nc.DeepCopy(), nil
 }
 
-func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluster) error {
+func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluster, profile *v1alpha1.PageServerProfile, logger *slog.Logger) error {
+	psname := fmt.Sprintf("%s-pageserver", nc.Name)
 
-	pg, err := r.kclient.AppsV1().StatefulSets(nc.Namespace).Get(ctx, fmt.Sprintf("%s-pageserver", nc.Name), metav1.GetOptions{})
+	ps := &v1alpha1.PageServer{}
+	err := r.nclient.Get(ctx, client.ObjectKey{
+		Name:      psname,
+		Namespace: nc.Namespace,
+	}, ps)
+
 	notFound := apierrors.IsNotFound(err)
 
 	if err != nil && !notFound {
-		return fmt.Errorf("failed to get pageserver statefulset: %w", err)
+		return fmt.Errorf("failed to get pageserver: %w", err)
 	}
 
 	if !notFound {
-		pg = pg.DeepCopy()
+		ps = ps.DeepCopy()
 	}
 
-	sset, err := makePageServerStatefulSet(nc)
-	if err != nil {
-		return fmt.Errorf("failed to create pageserver statefulset spec: %w", err)
+	if !notFound && ps.Spec.ProfileRef != nil &&
+		ps.Spec.ProfileRef.Name == profile.Name &&
+		ps.Spec.ProfileRef.Namespace == profile.Namespace {
+		// No update needed
+		return nil
 	}
 
-	hash, err := createInputHash(sset.ObjectMeta, sset.Spec)
-	if err != nil {
-		return fmt.Errorf("failed to create input hash for pageserver: %w", err)
-	}
-
-	newSS, err := makePageServerStatefulSet(nc)
-	if err != nil {
-		return fmt.Errorf("failed to create pageserver statefulset: %w", err)
-	}
-
-	// If StatefulSet doesn't exist, create it
 	if notFound {
-
-		newSS.Name = fmt.Sprintf("%s-pageserver", nc.Name)
-		newSS.Namespace = nc.Namespace
-		if newSS.Annotations == nil {
-			newSS.Annotations = make(map[string]string)
+		ps = &v1alpha1.PageServer{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      psname,
+				Namespace: nc.Namespace,
+			},
+			Spec: v1alpha1.PageServerSpec{
+				ProfileRef: &corev1.ObjectReference{
+					Name:      profile.Name,
+					Namespace: profile.Namespace,
+				},
+			},
 		}
-		newSS.Annotations[InputHashAnnotationKey] = hash
 
-		if _, err := r.kclient.AppsV1().StatefulSets(nc.Namespace).Create(ctx, newSS, metav1.CreateOptions{}); err != nil {
-			return fmt.Errorf("failed to create pageserver statefulset: %w", err)
+		operator.UpdateObject(ps,
+			operator.WithLabels(map[string]string{
+				"neoncluster": nc.Name,
+				"app":         "pageserver",
+			}),
+			operator.WithOwner(nc),
+		)
+
+		err = r.nclient.Create(ctx, ps)
+		if err != nil {
+			return fmt.Errorf("failed to create pageserver: %w", err)
 		}
 
-		r.logger.Info("pageserver statefulset created successfully")
+		logger.Info("Created pageserver", "name", ps.Name, "namespace", ps.Namespace)
+
 		return nil
 	}
 
-	// Check if the input hash has changed
-	if pg.Annotations[InputHashAnnotationKey] == hash {
-		r.logger.Info("pageserver statefulset is up to date")
-		return nil
+	ps.Spec.ProfileRef = &corev1.ObjectReference{
+		Name:      profile.Name,
+		Namespace: profile.Namespace,
 	}
 
-	// Preserve existing fields that shouldn't be overwritten
-	newSS.Name = pg.Name
-	newSS.Namespace = pg.Namespace
-	newSS.ResourceVersion = pg.ResourceVersion
-	newSS.UID = pg.UID
-	if newSS.Annotations == nil {
-		newSS.Annotations = make(map[string]string)
-	}
-	newSS.Annotations[InputHashAnnotationKey] = hash
-
-	// Update the StatefulSet
-	if _, err := r.kclient.AppsV1().StatefulSets(nc.Namespace).Update(ctx, newSS, metav1.UpdateOptions{}); err != nil {
-		return fmt.Errorf("failed to update pageserver statefulset: %w", err)
+	err = r.nclient.Update(ctx, ps)
+	if err != nil {
+		return fmt.Errorf("failed to update pageserver: %w", err)
 	}
 
-	r.logger.Info("pageserver statefulset updated successfully")
+	logger.Info("Updated pageserver", "name", ps.Name, "namespace", ps.Namespace)
+
 	return nil
 }
 
-func (r *Operator) updateSafekeeper(ctx context.Context, nc *v1alpha1.NeonCluster) error {
+func (r *Operator) updateSafeKeeper(ctx context.Context, nc *v1alpha1.NeonCluster, profile *v1alpha1.SafeKeeperProfile, logger *slog.Logger) error {
+	skname := fmt.Sprintf("%s-safekeeper", nc.Name)
 
-	sk, err := r.kclient.AppsV1().StatefulSets(nc.Namespace).Get(ctx, fmt.Sprintf("%s-safekeeper", nc.Name), metav1.GetOptions{})
+	sk := &v1alpha1.SafeKeeper{}
+	err := r.nclient.Get(ctx, client.ObjectKey{
+		Name:      skname,
+		Namespace: nc.Namespace,
+	}, sk)
+
 	notFound := apierrors.IsNotFound(err)
 
 	if err != nil && !notFound {
-		return fmt.Errorf("failed to get safekeeper statefulset: %w", err)
+		return fmt.Errorf("failed to get safekeeper: %w", err)
 	}
 
 	if !notFound {
 		sk = sk.DeepCopy()
 	}
 
-	sset, err := makeSafekeeperStatefulSet(nc)
-	if err != nil {
-		return fmt.Errorf("failed to create safekeeper statefulset spec: %w", err)
+	if !notFound && sk.Spec.ProfileRef != nil &&
+		sk.Spec.ProfileRef.Name == profile.Name &&
+		sk.Spec.ProfileRef.Namespace == profile.Namespace {
+		// No update needed
+		return nil
 	}
 
-	hash, err := createInputHash(sset.ObjectMeta, sset.Spec)
-	if err != nil {
-		return fmt.Errorf("failed to create input hash for safekeeper: %w", err)
-	}
-
-	newSS, err := makeSafekeeperStatefulSet(nc)
-	if err != nil {
-		return fmt.Errorf("failed to create safekeeper statefulset: %w", err)
-	}
-
-	// If StatefulSet doesn't exist, create it
 	if notFound {
-
-		newSS.Name = fmt.Sprintf("%s-safekeeper", nc.Name)
-		newSS.Namespace = nc.Namespace
-		if newSS.Annotations == nil {
-			newSS.Annotations = make(map[string]string)
+		sk = &v1alpha1.SafeKeeper{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      skname,
+				Namespace: nc.Namespace,
+			},
+			Spec: v1alpha1.SafeKeeperSpec{
+				ProfileRef: &corev1.ObjectReference{
+					Name:      profile.Name,
+					Namespace: profile.Namespace,
+				},
+			},
 		}
-		newSS.Annotations[InputHashAnnotationKey] = hash
 
-		if _, err := r.kclient.AppsV1().StatefulSets(nc.Namespace).Create(ctx, newSS, metav1.CreateOptions{}); err != nil {
-			return fmt.Errorf("failed to create safekeeper statefulset: %w", err)
+		operator.UpdateObject(sk,
+			operator.WithLabels(map[string]string{
+				"neoncluster": nc.Name,
+				"app":         "safekeeper",
+			}),
+			operator.WithOwner(nc),
+		)
+
+		err = r.nclient.Create(ctx, sk)
+		if err != nil {
+			return fmt.Errorf("failed to create safekeeper: %w", err)
 		}
 
-		r.logger.Info("safekeeper statefulset created successfully")
+		logger.Info("Created safekeeper", "name", sk.Name, "namespace", sk.Namespace)
+
 		return nil
 	}
 
-	// Check if the input hash has changed
-	if sk.Annotations[InputHashAnnotationKey] == hash {
-		r.logger.Info("safekeeper statefulset is up to date")
-		return nil
+	sk.Spec.ProfileRef = &corev1.ObjectReference{
+		Name:      profile.Name,
+		Namespace: profile.Namespace,
 	}
 
-	// Preserve existing fields that shouldn't be overwritten
-	newSS.Name = sk.Name
-	newSS.Namespace = sk.Namespace
-	newSS.ResourceVersion = sk.ResourceVersion
-	newSS.UID = sk.UID
-	if newSS.Annotations == nil {
-		newSS.Annotations = make(map[string]string)
-	}
-	newSS.Annotations[InputHashAnnotationKey] = hash
-
-	// Update the StatefulSet
-	if _, err := r.kclient.AppsV1().StatefulSets(nc.Namespace).Update(ctx, newSS, metav1.UpdateOptions{}); err != nil {
-		return fmt.Errorf("failed to update safekeeper statefulset: %w", err)
+	err = r.nclient.Update(ctx, sk)
+	if err != nil {
+		return fmt.Errorf("failed to update safekeeper: %w", err)
 	}
 
-	r.logger.Info("safekeeper statefulset updated successfully")
+	logger.Info("Updated safekeeper", "name", sk.Name, "namespace", sk.Namespace)
+
 	return nil
 }
 
-func (r *Operator) updateStorageBroker(ctx context.Context, nc *v1alpha1.NeonCluster) error {
+func (r *Operator) updateStorageBroker(ctx context.Context, nc *v1alpha1.NeonCluster, profile *v1alpha1.StorageBrokerProfile, logger *slog.Logger) error {
+	sbname := fmt.Sprintf("%s-storagebroker", nc.Name)
 
-	sb, err := r.kclient.AppsV1().Deployments(nc.Namespace).Get(ctx, fmt.Sprintf("%s-storage-broker", nc.Name), metav1.GetOptions{})
+	sb := &v1alpha1.StorageBroker{}
+	err := r.nclient.Get(ctx, client.ObjectKey{
+		Name:      sbname,
+		Namespace: nc.Namespace,
+	}, sb)
+
 	notFound := apierrors.IsNotFound(err)
 
 	if err != nil && !notFound {
-		return fmt.Errorf("failed to get storage broker deployment: %w", err)
+		return fmt.Errorf("failed to get storagebroker: %w", err)
 	}
 
 	if !notFound {
 		sb = sb.DeepCopy()
 	}
 
-	deploy, err := makeSafekeeperDeployment(nc)
-	if err != nil {
-		return fmt.Errorf("failed to create storage broker deployment spec: %w", err)
+	if !notFound && sb.Spec.ProfileRef != nil &&
+		sb.Spec.ProfileRef.Name == profile.Name &&
+		sb.Spec.ProfileRef.Namespace == profile.Namespace {
+		// No update needed
+		return nil
 	}
 
-	hash, err := createInputHash(deploy.ObjectMeta, deploy.Spec)
-	if err != nil {
-		return fmt.Errorf("failed to create input hash for storage broker: %w", err)
-	}
-
-	newDeploy, err := makeSafekeeperDeployment(nc)
-	if err != nil {
-		return fmt.Errorf("failed to create storage broker deployment: %w", err)
-	}
-
-	// If Deployment doesn't exist, create it
 	if notFound {
-
-		newDeploy.Name = fmt.Sprintf("%s-storage-broker", nc.Name)
-		newDeploy.Namespace = nc.Namespace
-		if newDeploy.Annotations == nil {
-			newDeploy.Annotations = make(map[string]string)
+		sb = &v1alpha1.StorageBroker{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      sbname,
+				Namespace: nc.Namespace,
+			},
+			Spec: v1alpha1.StorageBrokerSpec{
+				ProfileRef: &corev1.ObjectReference{
+					Name:      profile.Name,
+					Namespace: profile.Namespace,
+				},
+			},
 		}
-		newDeploy.Annotations[InputHashAnnotationKey] = hash
 
-		if _, err := r.kclient.AppsV1().Deployments(nc.Namespace).Create(ctx, newDeploy, metav1.CreateOptions{}); err != nil {
-			return fmt.Errorf("failed to create storage broker deployment: %w", err)
+		operator.UpdateObject(sb,
+			operator.WithLabels(map[string]string{
+				"neoncluster": nc.Name,
+				"app":         "storagebroker",
+			}),
+			operator.WithOwner(nc),
+		)
+
+		err = r.nclient.Create(ctx, sb)
+		if err != nil {
+			return fmt.Errorf("failed to create storagebroker: %w", err)
 		}
 
-		r.logger.Info("storage broker deployment created successfully")
+		logger.Info("Created storagebroker", "name", sb.Name, "namespace", sb.Namespace)
+
 		return nil
 	}
 
-	// Check if the input hash has changed
-	if sb.Annotations[InputHashAnnotationKey] == hash {
-		r.logger.Info("storage broker deployment is up to date")
-		return nil
+	sb.Spec.ProfileRef = &corev1.ObjectReference{
+		Name:      profile.Name,
+		Namespace: profile.Namespace,
 	}
 
-	// Preserve existing fields that shouldn't be overwritten
-	newDeploy.Name = sb.Name
-	newDeploy.Namespace = sb.Namespace
-	newDeploy.ResourceVersion = sb.ResourceVersion
-	newDeploy.UID = sb.UID
-	if newDeploy.Annotations == nil {
-		newDeploy.Annotations = make(map[string]string)
-	}
-	newDeploy.Annotations[InputHashAnnotationKey] = hash
-
-	// Update the Deployment
-	if _, err := r.kclient.AppsV1().Deployments(nc.Namespace).Update(ctx, newDeploy, metav1.UpdateOptions{}); err != nil {
-		return fmt.Errorf("failed to update storage broker deployment: %w", err)
-	}
-
-	r.logger.Info("storage broker deployment updated successfully")
-	return nil
-}
-
-func createInputHash(objMeta metav1.ObjectMeta, spec interface{}) (string, error) {
-	// Get all annotations and exclude the input hash annotation
-	filteredAnnotations := make(map[string]string)
-	for k, v := range objMeta.Annotations {
-		if k != InputHashAnnotationKey {
-			filteredAnnotations[k] = v
-		}
-	}
-
-	hash, err := hashstructure.Hash(struct {
-		Labels      map[string]string
-		Annotations map[string]string
-		Generation  int64
-		Spec        interface{}
-	}{
-		Labels:      objMeta.Labels,
-		Annotations: filteredAnnotations,
-		Generation:  objMeta.Generation,
-		Spec:        spec,
-	}, nil)
+	err = r.nclient.Update(ctx, sb)
 	if err != nil {
-		return "", fmt.Errorf("failed to calculate combined hash: %w", err)
+		return fmt.Errorf("failed to update storagebroker: %w", err)
 	}
 
-	return fmt.Sprintf("%d", hash), nil
+	logger.Info("Updated storagebroker", "name", sb.Name, "namespace", sb.Namespace)
+
+	return nil
 }

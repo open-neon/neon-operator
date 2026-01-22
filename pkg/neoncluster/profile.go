@@ -28,8 +28,8 @@ import (
 )
 
 const (
-	DefaultPageServerProfileName   = "default-pageserver"
-	DefaultSafeKeeperProfileName   = "default-safekeeper"
+	DefaultPageServerProfileName    = "default-pageserver"
+	DefaultSafeKeeperProfileName    = "default-safekeeper"
 	DefaultStorageBrokerProfileName = "default-storage-broker"
 )
 

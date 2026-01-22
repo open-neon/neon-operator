@@ -156,4 +156,3 @@ func makePageServerStatefulSetSpec(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSe
 
 	return &spec, nil
 }
-
