@@ -31,13 +31,10 @@ const controllerName = "neoncluster-controller"
 // +kubebuilder:rbac:groups=core.open-neon.io,resources=neonclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=core.open-neon.io,resources=neonclusters/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core.open-neon.io,resources=pageserverprofiles,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core.open-neon.io,resources=pageserverprofiles/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=core.open-neon.io,resources=pageserverprofiles/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core.open-neon.io,resources=safekeeperprofiles,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core.open-neon.io,resources=safekeeperprofiles/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=core.open-neon.io,resources=safekeeperprofiles/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core.open-neon.io,resources=storagebrokerprofiles,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core.open-neon.io,resources=storagebrokerprofiles/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=core.open-neon.io,resources=storagebrokerprofiles/finalizers,verbs=update
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get;update;patch

@@ -69,32 +69,11 @@ type PageServerProfileSpec struct {
 	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
 }
 
-// PageServerProfileStatus defines the observed state of PageServerProfile.
-type PageServerProfileStatus struct {
-	// For Kubernetes API conventions, see:
-	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
-
-	// conditions represent the current state of the PageServerProfile resource.
-	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
-	//
-	// Standard condition types include:
-	// - "Available": the resource is fully functional
-	// - "Progressing": the resource is being created or updated
-	// - "Degraded": the resource failed to reach or maintain its desired state
-	//
-	// The status of each condition is one of True, False, or Unknown.
-	// +listType=map
-	// +listMapKey=type
-	// +optional
-	Conditions []metav1.Condition `json:"conditions,omitempty"`
-}
-
 // +genclient
 // +k8s:openapi-gen=true
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:categories="neon-operator",shortName="psp"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:subresource:status
 
 // PageServerProfile is the Schema for the pageserverprofiles API
 type PageServerProfile struct {
@@ -107,10 +86,6 @@ type PageServerProfile struct {
 	// spec defines the desired state of PageServerProfile
 	// +required
 	Spec PageServerProfileSpec `json:"spec"`
-
-	// status defines the observed state of PageServerProfile
-	// +optional
-	Status PageServerProfileStatus `json:"status,omitzero"`
 }
 
 // +kubebuilder:object:root=true
