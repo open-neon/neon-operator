@@ -1,3 +1,19 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package neoncluster
 
 import (
@@ -23,6 +39,13 @@ type Operator struct {
 	kclient kubernetes.Interface
 	scheme  *runtime.Scheme
 	logger  *slog.Logger
+}
+
+// Profiles holds references to all profile resources for a NeonCluster
+type Profiles struct {
+	pageServer    *corev1alpha1.PageServerProfile
+	safeKeeper    *corev1alpha1.SafeKeeperProfile
+	storageBroker *corev1alpha1.StorageBrokerProfile
 }
 
 // New creates a new NeonCluster Controller.
@@ -55,10 +78,14 @@ func (r *Operator) sync(ctx context.Context, name string, namespace string) erro
 	}
 
 	key := fmt.Sprintf("%s/%s", namespace, name)
-
 	logger := r.logger.With("key", key)
 
 	logger.Info("Sync neoncluster")
+
+	_, err = r.getProfiles(ctx, nc)
+	if err != nil {
+		return err
+	}
 
 	err = r.updatePageServer(ctx, nc)
 	if err != nil {
