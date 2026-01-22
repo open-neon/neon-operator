@@ -1,10 +1,9 @@
-# serverless-pg
+# stateless-pg
+Serverless implementation for Postgresql.
 
 ## ⚠️ Disclaimer and Warnings
 
-**This is NOT an official Neon operator.** This project is an independent, community-maintained Kubernetes operator for neonDB and is in no way affiliated with, endorsed by, or supported by Neon.
-
-A community-maintained Kubernetes operator for neonDB  
+**This is NOT an official Neon operator.** This project is an independent, community-maintained Kubernetes operator which uses neonDB opensource components and is in no way affiliated with, endorsed by, or supported by Neon.
 
 ## Description
 // TODO(user): An in-depth paragraph about your project and overview of use
