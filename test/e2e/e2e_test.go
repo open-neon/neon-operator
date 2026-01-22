@@ -30,7 +30,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/open-neon/neon-operator/test/utils"
+	"github.com/stateless-pg.io/neon-operator/test/utils"
 )
 
 // namespace where the project is deployed in

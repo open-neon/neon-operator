@@ -1,7 +1,7 @@
 # This rule is not used by the project neon-operator itself.
 # It is provided to allow the cluster admin to help manage permissions for users.
 #
-# Grants permissions to create, update, and delete resources within the core.open-neon.io.
+# Grants permissions to create, update, and delete resources within the core.stateless-pg.io.io.
 # This role is intended for users who need to manage these resources
 # but should not control RBAC or manage permissions for others.
 
@@ -14,7 +14,7 @@ metadata:
   name: neoncluster-editor-role
 rules:
 - apiGroups:
-  - core.open-neon.io
+  - core.stateless-pg.io.io
   resources:
   - neonclusters
   verbs:
@@ -26,7 +26,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - core.open-neon.io
+  - core.stateless-pg.io.io
   resources:
   - neonclusters/status
   verbs:

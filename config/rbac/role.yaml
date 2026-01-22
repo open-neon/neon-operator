@@ -68,7 +68,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - core.open-neon.io
+  - core.stateless-pg.io.io
   resources:
   - neonclusters
   - pageserverprofiles
@@ -83,7 +83,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - core.open-neon.io
+  - core.stateless-pg.io.io
   resources:
   - neonclusters/finalizers
   - pageserverprofiles/finalizers
@@ -92,7 +92,7 @@ rules:
   verbs:
   - update
 - apiGroups:
-  - core.open-neon.io
+  - core.stateless-pg.io.io
   resources:
   - neonclusters/status
   - pageserverprofiles/status

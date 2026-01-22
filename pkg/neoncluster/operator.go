@@ -29,9 +29,9 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/open-neon/neon-operator/pkg/api/v1alpha1"
-	corev1alpha1 "github.com/open-neon/neon-operator/pkg/api/v1alpha1"
-	"github.com/open-neon/neon-operator/pkg/operator"
+	"github.com/stateless-pg.io/neon-operator/pkg/api/v1alpha1"
+	corev1alpha1 "github.com/stateless-pg.io/neon-operator/pkg/api/v1alpha1"
+	"github.com/stateless-pg.io/neon-operator/pkg/operator"
 )
 
 // Operator manages lifecycle for NeonCluster resources.

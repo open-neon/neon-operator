@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.19.0
-  name: storagebrokerprofiles.core.open-neon.io
+  name: storagebrokerprofiles.core.stateless-pg.io.io
 spec:
-  group: core.open-neon.io
+  group: core.stateless-pg.io.io
   names:
     categories:
     - neon-operator

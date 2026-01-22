@@ -17,8 +17,8 @@ limitations under the License.
 package neoncluster
 
 import (
-	"github.com/open-neon/neon-operator/pkg/api/v1alpha1"
-	"github.com/open-neon/neon-operator/pkg/operator"
+	"github.com/stateless-pg.io/neon-operator/pkg/api/v1alpha1"
+	"github.com/stateless-pg.io/neon-operator/pkg/operator"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

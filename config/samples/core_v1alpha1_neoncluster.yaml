@@ -1,4 +1,4 @@
-apiVersion: core.open-neon.io/v1alpha1
+apiVersion: core.stateless-pg.io.io/v1alpha1
 kind: NeonCluster
 metadata:
   labels:
