@@ -71,6 +71,9 @@ rules:
   - core.open-neon.io
   resources:
   - neonclusters
+  - pageserverprofiles
+  - safekeeperprofiles
+  - storagebrokerprofiles
   verbs:
   - create
   - delete
@@ -83,12 +86,18 @@ rules:
   - core.open-neon.io
   resources:
   - neonclusters/finalizers
+  - pageserverprofiles/finalizers
+  - safekeeperprofiles/finalizers
+  - storagebrokerprofiles/finalizers
   verbs:
   - update
 - apiGroups:
   - core.open-neon.io
   resources:
   - neonclusters/status
+  - pageserverprofiles/status
+  - safekeeperprofiles/status
+  - storagebrokerprofiles/status
   verbs:
   - get
   - patch
