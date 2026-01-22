@@ -30,6 +30,23 @@ const (
 // NeonClusterSpec defines the desired state of NeonCluster.
 // +k8s:openapi-gen=true
 type NeonClusterSpec struct {
+	// regionName is the name of the region where the NeonCluster is deployed
+	// +optional
+	RegionName string `json:"regionName,omitempty"`
+	// safekeeperProfileRef is a reference to the SafeKeeperProfile resource
+	// +optional
+	SafeKeeperProfileRef *v1.ObjectReference `json:"safekeeperProfileRef,omitempty"`
+
+	// pageserverProfileRef is a reference to the PageServerProfile resource
+	// +optional
+	PageServerProfileRef *v1.ObjectReference `json:"pageserverProfileRef,omitempty"`
+
+	// storageBrokerProfileRef is a reference to the StorageBrokerProfile resource
+	// +optional
+	StorageBrokerProfileRef *v1.ObjectReference `json:"storageBrokerProfileRef,omitempty"`
+
+	// objectStorage defines the configuration for object storage used by Neon components
+	// +required
 	ObjectStorage ObjectStorageSpec `json:"objectStorage"`
 }
 
