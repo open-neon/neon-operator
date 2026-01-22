@@ -98,22 +98,6 @@ type StorageSpec struct {
 	VolumeClaimTemplate EmbeddedPersistentVolumeClaim `json:"volumeClaimTemplate,omitempty"`
 }
 
-// StorageBrokerSpec defines the desired state of StorageBrokerSpec
-// It will be deployment.
-// +k8s:openapi-gen=true
-type StorageBrokerSpec struct {
-	CommonFields `json:",inline"`
-	// +kubebuilder:default=1
-	// +kubebuilder:validation:Minimum=1
-	// +optional
-	MinReplicas *int64 `json:"minReplicas,omitempty"`
-
-	// +kubebuilder:default=1
-	// +kubebuilder:validation:Minimum=1
-	// +optional
-	MaxReplicas *int64 `json:"maxReplicas,omitempty"`
-}
-
 // +k8s:deepcopy-gen=true
 type CommonFields struct {
 	// kubebuilder:default="ghcr.io/neondatabase/neon:latest"

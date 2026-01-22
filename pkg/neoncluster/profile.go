@@ -24,54 +24,74 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1alpha1 "github.com/open-neon/neon-operator/pkg/api/v1alpha1"
+	"github.com/open-neon/neon-operator/pkg/k8s-utils"
+)
+
+const (
+	DefaultPageServerProfileName   = "default-pageserver"
+	DefaultSafeKeeperProfileName   = "default-safekeeper"
+	DefaultStorageBrokerProfileName = "default-storage-broker"
 )
 
 // getProfiles fetches all referenced profiles from the NeonCluster spec
-// Returns an error if any referenced profile does not exist
+// If a profile is not explicitly referenced, it will attempt to fetch the default profile
+// Returns an error if any referenced or default profile does not exist
 func (r *Operator) getProfiles(ctx context.Context, nc *corev1alpha1.NeonCluster) (*Profiles, error) {
 	profiles := &Profiles{}
 
+	pageServerProfileName := DefaultPageServerProfileName
+	pageServerNamespace := k8sutils.GetOperatorNamespace()
 	if nc.Spec.PageServerProfileRef != nil {
-		profile := &corev1alpha1.PageServerProfile{}
-		if err := r.nclient.Get(ctx, client.ObjectKey{
-			Name:      nc.Spec.PageServerProfileRef.Name,
-			Namespace: nc.Spec.PageServerProfileRef.Namespace,
-		}, profile); err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil, fmt.Errorf("PageServerProfile %s/%s not found", nc.Spec.PageServerProfileRef.Namespace, nc.Spec.PageServerProfileRef.Name)
-			}
-			return nil, fmt.Errorf("failed to get PageServerProfile %s/%s: %w", nc.Spec.PageServerProfileRef.Namespace, nc.Spec.PageServerProfileRef.Name, err)
-		}
-		profiles.pageServer = profile.DeepCopy()
+		pageServerProfileName = nc.Spec.PageServerProfileRef.Name
+		pageServerNamespace = nc.Spec.PageServerProfileRef.Namespace
 	}
+	profile := &corev1alpha1.PageServerProfile{}
+	if err := r.nclient.Get(ctx, client.ObjectKey{
+		Name:      pageServerProfileName,
+		Namespace: pageServerNamespace,
+	}, profile); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("PageServerProfile %s/%s not found", pageServerNamespace, pageServerProfileName)
+		}
+		return nil, fmt.Errorf("failed to get PageServerProfile %s/%s: %w", pageServerNamespace, pageServerProfileName, err)
+	}
+	profiles.pageServer = profile.DeepCopy()
 
+	safeKeeperProfileName := DefaultSafeKeeperProfileName
+	safeKeeperNamespace := k8sutils.GetOperatorNamespace()
 	if nc.Spec.SafeKeeperProfileRef != nil {
-		profile := &corev1alpha1.SafeKeeperProfile{}
-		if err := r.nclient.Get(ctx, client.ObjectKey{
-			Name:      nc.Spec.SafeKeeperProfileRef.Name,
-			Namespace: nc.Spec.SafeKeeperProfileRef.Namespace,
-		}, profile); err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil, fmt.Errorf("SafeKeeperProfile %s/%s not found", nc.Spec.SafeKeeperProfileRef.Namespace, nc.Spec.SafeKeeperProfileRef.Name)
-			}
-			return nil, fmt.Errorf("failed to get SafeKeeperProfile %s/%s: %w", nc.Spec.SafeKeeperProfileRef.Namespace, nc.Spec.SafeKeeperProfileRef.Name, err)
-		}
-		profiles.safeKeeper = profile.DeepCopy()
+		safeKeeperProfileName = nc.Spec.SafeKeeperProfileRef.Name
+		safeKeeperNamespace = nc.Spec.SafeKeeperProfileRef.Namespace
 	}
+	skProfile := &corev1alpha1.SafeKeeperProfile{}
+	if err := r.nclient.Get(ctx, client.ObjectKey{
+		Name:      safeKeeperProfileName,
+		Namespace: safeKeeperNamespace,
+	}, skProfile); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("SafeKeeperProfile %s/%s not found", safeKeeperNamespace, safeKeeperProfileName)
+		}
+		return nil, fmt.Errorf("failed to get SafeKeeperProfile %s/%s: %w", safeKeeperNamespace, safeKeeperProfileName, err)
+	}
+	profiles.safeKeeper = skProfile.DeepCopy()
 
+	storageBrokerProfileName := DefaultStorageBrokerProfileName
+	storageBrokerNamespace := k8sutils.GetOperatorNamespace()
 	if nc.Spec.StorageBrokerProfileRef != nil {
-		profile := &corev1alpha1.StorageBrokerProfile{}
-		if err := r.nclient.Get(ctx, client.ObjectKey{
-			Name:      nc.Spec.StorageBrokerProfileRef.Name,
-			Namespace: nc.Spec.StorageBrokerProfileRef.Namespace,
-		}, profile); err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil, fmt.Errorf("StorageBrokerProfile %s/%s not found", nc.Spec.StorageBrokerProfileRef.Namespace, nc.Spec.StorageBrokerProfileRef.Name)
-			}
-			return nil, fmt.Errorf("failed to get StorageBrokerProfile %s/%s: %w", nc.Spec.StorageBrokerProfileRef.Namespace, nc.Spec.StorageBrokerProfileRef.Name, err)
-		}
-		profiles.storageBroker = profile.DeepCopy()
+		storageBrokerProfileName = nc.Spec.StorageBrokerProfileRef.Name
+		storageBrokerNamespace = nc.Spec.StorageBrokerProfileRef.Namespace
 	}
+	sbProfile := &corev1alpha1.StorageBrokerProfile{}
+	if err := r.nclient.Get(ctx, client.ObjectKey{
+		Name:      storageBrokerProfileName,
+		Namespace: storageBrokerNamespace,
+	}, sbProfile); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("StorageBrokerProfile %s/%s not found", storageBrokerNamespace, storageBrokerProfileName)
+		}
+		return nil, fmt.Errorf("failed to get StorageBrokerProfile %s/%s: %w", storageBrokerNamespace, storageBrokerProfileName, err)
+	}
+	profiles.storageBroker = sbProfile.DeepCopy()
 
 	return profiles, nil
 }
