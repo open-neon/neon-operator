@@ -88,7 +88,15 @@ func (r *Operator) sync(ctx context.Context, name string, namespace string) erro
 		return err
 	}
 
-	return r.updatePageServer(ctx, nc, pf.pageServer, logger)
+	if err := r.updatePageServer(ctx, nc, pf.pageServer, logger); err != nil {
+		return err
+	}
+
+	if err := r.updateSafeKeeper(ctx, nc, pf.safeKeeper, logger); err != nil {
+		return err
+	}
+
+	return r.updateStorageBroker(ctx, nc, pf.storageBroker, logger)
 
 }
 
@@ -174,6 +182,152 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 	}
 
 	logger.Info("Updated pageserver", "name", ps.Name, "namespace", ps.Namespace)
+
+	return nil
+}
+
+func (r *Operator) updateSafeKeeper(ctx context.Context, nc *v1alpha1.NeonCluster, profile *v1alpha1.SafeKeeperProfile, logger *slog.Logger) error {
+	skname := fmt.Sprintf("%s-safekeeper", nc.Name)
+
+	sk := &v1alpha1.SafeKeeper{}
+	err := r.nclient.Get(ctx, client.ObjectKey{
+		Name:      skname,
+		Namespace: nc.Namespace,
+	}, sk)
+
+	notFound := apierrors.IsNotFound(err)
+
+	if err != nil && !notFound {
+		return fmt.Errorf("failed to get safekeeper: %w", err)
+	}
+
+	if !notFound {
+		sk = sk.DeepCopy()
+	}
+
+	if !notFound && sk.Spec.ProfileRef != nil &&
+		sk.Spec.ProfileRef.Name == profile.Name &&
+		sk.Spec.ProfileRef.Namespace == profile.Namespace {
+		// No update needed
+		return nil
+	}
+
+	if notFound {
+		sk = &v1alpha1.SafeKeeper{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      skname,
+				Namespace: nc.Namespace,
+			},
+			Spec: v1alpha1.SafeKeeperSpec{
+				ProfileRef: &corev1.ObjectReference{
+					Name:      profile.Name,
+					Namespace: profile.Namespace,
+				},
+			},
+		}
+
+		operator.UpdateObject(sk,
+			operator.WithLabels(map[string]string{
+				"neoncluster": nc.Name,
+				"app":         "safekeeper",
+			}),
+			operator.WithOwner(nc),
+		)
+
+		err = r.nclient.Create(ctx, sk)
+		if err != nil {
+			return fmt.Errorf("failed to create safekeeper: %w", err)
+		}
+
+		logger.Info("Created safekeeper", "name", sk.Name, "namespace", sk.Namespace)
+
+		return nil
+	}
+
+	sk.Spec.ProfileRef = &corev1.ObjectReference{
+		Name:      profile.Name,
+		Namespace: profile.Namespace,
+	}
+
+	err = r.nclient.Update(ctx, sk)
+	if err != nil {
+		return fmt.Errorf("failed to update safekeeper: %w", err)
+	}
+
+	logger.Info("Updated safekeeper", "name", sk.Name, "namespace", sk.Namespace)
+
+	return nil
+}
+
+func (r *Operator) updateStorageBroker(ctx context.Context, nc *v1alpha1.NeonCluster, profile *v1alpha1.StorageBrokerProfile, logger *slog.Logger) error {
+	sbname := fmt.Sprintf("%s-storagebroker", nc.Name)
+
+	sb := &v1alpha1.StorageBroker{}
+	err := r.nclient.Get(ctx, client.ObjectKey{
+		Name:      sbname,
+		Namespace: nc.Namespace,
+	}, sb)
+
+	notFound := apierrors.IsNotFound(err)
+
+	if err != nil && !notFound {
+		return fmt.Errorf("failed to get storagebroker: %w", err)
+	}
+
+	if !notFound {
+		sb = sb.DeepCopy()
+	}
+
+	if !notFound && sb.Spec.ProfileRef != nil &&
+		sb.Spec.ProfileRef.Name == profile.Name &&
+		sb.Spec.ProfileRef.Namespace == profile.Namespace {
+		// No update needed
+		return nil
+	}
+
+	if notFound {
+		sb = &v1alpha1.StorageBroker{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      sbname,
+				Namespace: nc.Namespace,
+			},
+			Spec: v1alpha1.StorageBrokerSpec{
+				ProfileRef: &corev1.ObjectReference{
+					Name:      profile.Name,
+					Namespace: profile.Namespace,
+				},
+			},
+		}
+
+		operator.UpdateObject(sb,
+			operator.WithLabels(map[string]string{
+				"neoncluster": nc.Name,
+				"app":         "storagebroker",
+			}),
+			operator.WithOwner(nc),
+		)
+
+		err = r.nclient.Create(ctx, sb)
+		if err != nil {
+			return fmt.Errorf("failed to create storagebroker: %w", err)
+		}
+
+		logger.Info("Created storagebroker", "name", sb.Name, "namespace", sb.Namespace)
+
+		return nil
+	}
+
+	sb.Spec.ProfileRef = &corev1.ObjectReference{
+		Name:      profile.Name,
+		Namespace: profile.Namespace,
+	}
+
+	err = r.nclient.Update(ctx, sb)
+	if err != nil {
+		return fmt.Errorf("failed to update storagebroker: %w", err)
+	}
+
+	logger.Info("Updated storagebroker", "name", sb.Name, "namespace", sb.Namespace)
 
 	return nil
 }
