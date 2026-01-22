@@ -21,6 +21,9 @@ import (
 	"fmt"
 
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	corev1alpha1 "github.com/open-neon/neon-operator/pkg/api/v1alpha1"
 )
@@ -60,6 +63,78 @@ func (r *Operator) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result
 func (r *Operator) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1alpha1.NeonCluster{}).
+		Watches(&corev1alpha1.PageServerProfile{}, handler.EnqueueRequestsFromMapFunc(r.mapPageServerProfileToNeonCluster(mgr.GetClient()))).
+		Watches(&corev1alpha1.SafeKeeperProfile{}, handler.EnqueueRequestsFromMapFunc(r.mapSafeKeeperProfileToNeonCluster(mgr.GetClient()))).
+		Watches(&corev1alpha1.StorageBrokerProfile{}, handler.EnqueueRequestsFromMapFunc(r.mapStorageBrokerProfileToNeonCluster(mgr.GetClient()))).
 		Named("neoncluster").
 		Complete(r)
+}
+
+// mapPageServerProfileToNeonCluster returns NeonClusters that reference a PageServerProfile
+func (r *Operator) mapPageServerProfileToNeonCluster(c client.Client) func(context.Context, client.Object) []reconcile.Request {
+	return func(ctx context.Context, o client.Object) []reconcile.Request {
+		profile := o.(*corev1alpha1.PageServerProfile)
+		var clusters corev1alpha1.NeonClusterList
+		if err := c.List(ctx, &clusters, client.InNamespace(profile.Namespace)); err != nil {
+			return nil
+		}
+
+		var requests []reconcile.Request
+		for _, cluster := range clusters.Items {
+			if cluster.Spec.PageServerProfileRef != nil &&
+				cluster.Spec.PageServerProfileRef.Name == profile.Name &&
+				cluster.Spec.PageServerProfileRef.Namespace == profile.Namespace {
+				requests = append(requests, reconcile.Request{
+					NamespacedName: client.ObjectKeyFromObject(&cluster),
+				})
+			}
+		}
+		return requests
+	}
+}
+
+// mapSafeKeeperProfileToNeonCluster returns NeonClusters that reference a SafeKeeperProfile
+func (r *Operator) mapSafeKeeperProfileToNeonCluster(c client.Client) func(context.Context, client.Object) []reconcile.Request {
+	return func(ctx context.Context, o client.Object) []reconcile.Request {
+		profile := o.(*corev1alpha1.SafeKeeperProfile)
+		var clusters corev1alpha1.NeonClusterList
+		if err := c.List(ctx, &clusters, client.InNamespace(profile.Namespace)); err != nil {
+			return nil
+		}
+
+		var requests []reconcile.Request
+		for _, cluster := range clusters.Items {
+			if cluster.Spec.SafeKeeperProfileRef != nil &&
+				cluster.Spec.SafeKeeperProfileRef.Name == profile.Name &&
+				cluster.Spec.SafeKeeperProfileRef.Namespace == profile.Namespace {
+				requests = append(requests, reconcile.Request{
+					NamespacedName: client.ObjectKeyFromObject(&cluster),
+				})
+			}
+		}
+		return requests
+	}
+}
+
+// mapStorageBrokerProfileToNeonCluster returns NeonClusters that reference a StorageBrokerProfile
+func (r *Operator) mapStorageBrokerProfileToNeonCluster(c client.Client) func(context.Context, client.Object) []reconcile.Request {
+	return func(ctx context.Context, o client.Object) []reconcile.Request {
+		profile := o.(*corev1alpha1.StorageBrokerProfile)
+		var clusters corev1alpha1.NeonClusterList
+		if err := c.List(ctx, &clusters, client.InNamespace(profile.Namespace)); err != nil {
+			return nil
+		}
+
+		var requests []reconcile.Request
+		for _, cluster := range clusters.Items {
+			if cluster.Spec.StorageBrokerProfileRef != nil &&
+				cluster.Spec.StorageBrokerProfileRef.Name == profile.Name &&
+				cluster.Spec.StorageBrokerProfileRef.Namespace == profile.Namespace {
+				requests = append(requests, reconcile.Request{
+					NamespacedName: client.ObjectKeyFromObject(&cluster),
+				})
+			}
+		}
+		return requests
+	}
 }
