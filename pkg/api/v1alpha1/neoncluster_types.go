@@ -124,89 +124,6 @@ type PageServerSpec struct {
 	PersistentVolumeClaimRetentionPolicy *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
 }
 
-// StorageBrokerSpec defines the desired state of StorageBrokerSpec
-// It will be deployment.
-// +k8s:openapi-gen=true
-type StorageBrokerSpec struct {
-	CommonFields `json:",inline"`
-	// +kubebuilder:default=1
-	// +kubebuilder:validation:Minimum=1
-	// +optional
-	MinReplicas *int64 `json:"minReplicas,omitempty"`
-
-	// +kubebuilder:default=1
-	// +kubebuilder:validation:Minimum=1
-	// +optional
-	MaxReplicas *int64 `json:"maxReplicas,omitempty"`
-}
-
-// ObjectStorageSpec defines the configuration for object storage used by Neon components.
-// +k8s:openapi-gen=true
-type ObjectStorageSpec struct {
-	// endpoint is the URL of the object storage service
-	// +required
-	Endpoint string `json:"endpoint"`
-
-	// bucket is the name of the storage bucket
-	// +required
-	Bucket string `json:"bucket"`
-
-	// region specifies the storage region
-	// +required
-	Region string `json:"region"`
-
-	// credentialsSecret is a reference to a secret containing object storage credentials
-	// +optional
-	CredentialsSecret *v1.SecretReference `json:"credentialsSecret,omitempty"`
-
-	// prefix is the path prefix for all objects stored
-	// +optional
-	Prefix string `json:"prefix,omitempty"`
-
-	// maxConcurrentRequests defines the maximum number of concurrent requests to object storage
-	// +optional
-	MaxConcurrentRequests *int32 `json:"maxConcurrentRequests,omitempty"`
-
-	// extraConfig allows specifying additional configuration parameters as key-value pairs
-	// +optional
-	ExtraConfig map[string]string `json:"extraConfig,omitempty"`
-}
-
-// +k8s:deepcopy-gen=true
-type CommonFields struct {
-	// kubebuilder:default="ghcr.io/neondatabase/neon:latest"
-	// +optional
-	Image *string `json:"image,omitempty"`
-	// imagePullPolicy defines the image pull policy for the 'prometheus', 'init-config-reloader' and 'config-reloader' containers.
-	// See https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy for more details.
-	// +kubebuilder:validation:Enum="";Always;Never;IfNotPresent
-	// +optional
-	ImagePullPolicy v1.PullPolicy `json:"imagePullPolicy,omitempty"`
-	// imagePullSecrets defines an optional list of references to Secrets in the same namespace
-	// to use for pulling images from registries.
-	// See http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
-	// +optional
-	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
-
-	// resources defines the resources requests and limits of the 'prometheus' container.
-	// +optional
-	Resources v1.ResourceRequirements `json:"resources,omitempty"`
-
-	// nodeSelector defines on which Nodes the Pods are scheduled.
-	// +optional
-	//nolint:kubeapilinter
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-
-	// affinity defines the Pods' affinity scheduling rules if specified.
-	// +optional
-	Affinity *v1.Affinity `json:"affinity,omitempty"`
-
-	// securityContext holds pod-level security attributes and common container settings.
-	// This defaults to the default PodSecurityContext.
-	// +optional
-	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
-}
-
 // NeonClusterStatus defines the observed state of NeonCluster.
 type NeonClusterStatus struct {
 	// For Kubernetes API conventions, see:
@@ -262,37 +179,6 @@ type NeonClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitzero"`
 	Items           []NeonCluster `json:"items"`
-}
-
-// StorageSpec defines the configured storage for a group Prometheus servers.
-// If no storage option is specified, then by default an [EmptyDir](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) will be used.
-//
-// If multiple storage options are specified, priority will be given as follows:
-//  1. emptyDir
-//  2. ephemeral
-//  3. volumeClaimTemplate
-//
-// +k8s:openapi-gen=true
-type StorageSpec struct {
-	// disableMountSubPath deprecated: subPath usage will be removed in a future release.
-	// +optional
-	DisableMountSubPath bool `json:"disableMountSubPath,omitempty"` // nolint:kubeapilinter
-	// emptyDir to be used by the StatefulSet.
-	// If specified, it takes precedence over `ephemeral` and `volumeClaimTemplate`.
-	// More info: https://kubernetes.io/docs/concepts/storage/volumes/#emptydir
-	// +optional
-	EmptyDir *v1.EmptyDirVolumeSource `json:"emptyDir,omitempty"`
-	// ephemeral to be used by the StatefulSet.
-	// This is a beta field in k8s 1.21 and GA in 1.15.
-	// For lower versions, starting with k8s 1.19, it requires enabling the GenericEphemeralVolume feature gate.
-	// More info: https://kubernetes.io/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes
-	// +optional
-	Ephemeral *v1.EphemeralVolumeSource `json:"ephemeral,omitempty"`
-	// volumeClaimTemplate defines the PVC spec to be used by the Prometheus StatefulSets.
-	// The easiest way to use a volume that cannot be automatically provisioned
-	// is to use a label selector alongside manually created PersistentVolumes.
-	// +optional
-	VolumeClaimTemplate EmbeddedPersistentVolumeClaim `json:"volumeClaimTemplate,omitempty"`
 }
 
 func init() {
