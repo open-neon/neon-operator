@@ -67,9 +67,6 @@ type StorageBrokerProfileStatus struct {
 // +k8s:openapi-gen=true
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:categories="neon-operator",shortName="sbp"
-// +kubebuilder:printcolumn:name="Min Replicas",type="integer",JSONPath=".spec.minReplicas",description="The minimum number of StorageBroker replicas"
-// +kubebuilder:printcolumn:name="Max Replicas",type="integer",JSONPath=".spec.maxReplicas",description="The maximum number of StorageBroker replicas"
-// +kubebuilder:printcolumn:name="Available",type="string",JSONPath=".status.conditions[?(@.type == 'Available')].status"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:subresource:status
 
