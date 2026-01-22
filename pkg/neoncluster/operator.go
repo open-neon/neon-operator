@@ -31,6 +31,7 @@ import (
 
 	"github.com/open-neon/neon-operator/pkg/api/v1alpha1"
 	corev1alpha1 "github.com/open-neon/neon-operator/pkg/api/v1alpha1"
+	"github.com/open-neon/neon-operator/pkg/operator"
 )
 
 // Operator manages lifecycle for NeonCluster resources.
@@ -144,6 +145,14 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 			},
 		}
 
+		operator.UpdateObject(ps,
+			operator.WithLabels(map[string]string{
+				"neoncluster": nc.Name,
+				"app":         "pageserver",
+			}),
+			operator.WithOwner(nc),
+		)
+
 		err = r.nclient.Create(ctx, ps)
 		if err != nil {
 			return fmt.Errorf("failed to create pageserver: %w", err)
@@ -168,4 +177,3 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 
 	return nil
 }
-
