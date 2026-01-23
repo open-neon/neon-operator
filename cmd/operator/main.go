@@ -38,6 +38,7 @@ import (
 
 	corev1alpha1 "github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
 	neonclusterController "github.com/stateless-pg/stateless-pg/pkg/neoncluster"
+	pageserverController "github.com/stateless-pg/stateless-pg/pkg/pageserver"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -193,6 +194,17 @@ func main() {
 
 	if err := nco.SetupWithManager(mgr); err != nil {
 		logger.Error("unable to create controller", "error", err, "controller", "NeonCluster")
+		os.Exit(1)
+	}
+
+	pso, err := pageserverController.New(mgr.GetClient(), mgr.GetScheme(), logger, mgr.GetConfig())
+	if err != nil {
+		logger.Error("unable to create controller", "error", err, "controller", "PageServer")
+		os.Exit(1)
+	}
+
+	if err := pso.SetupWithManager(mgr); err != nil {
+		logger.Error("unable to create controller", "error", err, "controller", "PageServer")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
