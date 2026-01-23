@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -63,11 +64,10 @@ func (o *Operator) sync(ctx context.Context, name, namespace string) error {
 		Name:      name,
 		Namespace: namespace,
 	}, ps); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 		return err
-	}
-
-	if ps == nil {
-		return nil
 	}
 
 	ps = ps.DeepCopy()
@@ -83,10 +83,6 @@ func (o *Operator) sync(ctx context.Context, name, namespace string) error {
 		Namespace: ps.Spec.ProfileRef.Namespace,
 	}, profile); err != nil {
 		return fmt.Errorf("failed to get pageserver profile : %w", err)
-	}
-
-	if profile == nil {
-		return fmt.Errorf("pageserver does not exist: %s", ps.Spec.ProfileRef.Name)
 	}
 
 	return nil

@@ -69,14 +69,20 @@ func New(client client.Client, scheme *runtime.Scheme, logger *slog.Logger, conf
 
 // sync runes everytime where there is reconcile event for neocluster.
 func (r *Operator) sync(ctx context.Context, name, namespace string) error {
-	nc, err := r.getNeonCluster(ctx, name, namespace)
-	if err != nil {
+	nc := &corev1alpha1.NeonCluster{}
+	if err := r.nclient.Get(ctx, client.ObjectKey{
+		Name:      name,
+		Namespace: namespace,
+	}, nc); err != nil {
+		if apierrors.IsNotFound(err) {
+			// NeonCluster resource not found, could have been deleted after reconcile request.
+			// Return and don't requeue
+			return nil
+		}
 		return err
 	}
 
-	if nc == nil {
-		return nil
-	}
+	nc = nc.DeepCopy()
 
 	key := fmt.Sprintf("%s/%s", namespace, name)
 	logger := r.logger.With("key", key)
@@ -98,19 +104,6 @@ func (r *Operator) sync(ctx context.Context, name, namespace string) error {
 
 	return r.updateStorageBroker(ctx, nc, pf.storageBroker, logger)
 
-}
-
-func (r *Operator) getNeonCluster(ctx context.Context, name string, namespace string) (*corev1alpha1.NeonCluster, error) {
-	nc := &corev1alpha1.NeonCluster{}
-	err := r.nclient.Get(ctx, client.ObjectKey{
-		Name:      name,
-		Namespace: namespace,
-	}, nc)
-	if err != nil {
-		return nil, err
-	}
-
-	return nc.DeepCopy(), nil
 }
 
 func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluster, profile *v1alpha1.PageServerProfile, logger *slog.Logger) error {
