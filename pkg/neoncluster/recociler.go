@@ -22,29 +22,29 @@ import (
 
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	corev1alpha1 "github.com/stateless-pg.io/neon-operator/pkg/api/v1alpha1"
+	corev1alpha1 "github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
 )
 
 const controllerName = "neoncluster-controller"
 
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=neonclusters,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=neonclusters/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=neonclusters/finalizers,verbs=update
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=pageserverprofiles,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=pageserverprofiles/finalizers,verbs=update
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=safekeeperprofiles,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=safekeeperprofiles/finalizers,verbs=update
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=storagebrokerprofiles,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=storagebrokerprofiles/finalizers,verbs=update
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=pageservers,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=pageservers/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=pageservers/finalizers,verbs=update
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=safekeepers,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=safekeepers/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=safekeepers/finalizers,verbs=update
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=storagebrokers,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=storagebrokers/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=storagebrokers/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=neonclusters,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=neonclusters/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=neonclusters/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=pageserverprofiles,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=pageserverprofiles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=safekeeperprofiles,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=safekeeperprofiles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=storagebrokerprofiles,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=storagebrokerprofiles/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=pageservers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=pageservers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=pageservers/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=safekeepers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=safekeepers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=safekeepers/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=storagebrokers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=storagebrokers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=storagebrokers/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

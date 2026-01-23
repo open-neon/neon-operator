@@ -22,9 +22,12 @@ import (
 	"log/slog"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	v1alpha1 "github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
 )
 
 // Operator manages lifecycle for PageServer resources.
@@ -53,12 +56,23 @@ func New(nclient client.Client, scheme *runtime.Scheme, logger *slog.Logger, con
 	}, nil
 }
 
-// Sync reconciles the PageServer resource state with the desired state.
+// sync reconciles the PageServer resource state with the desired state.
 func (o *Operator) sync(ctx context.Context, name, namespace string) error {
+	key := types.NamespacedName{Name: name, Namespace: namespace}
 
-	
-	key := fmt.Sprintf("%s/%s", namespace, name)
+	ps := &v1alpha1.PageServer{}
+	if err := o.nclient.Get(ctx, key, ps); err != nil {
+		return err
+	}
+
+	if ps == nil {
+		return nil
+	}
+
+	ps = ps.DeepCopy()
+
 	logger := o.logger.With("key", key)
-	logger.Info("syncing pageServer")
+	logger.Info("syncing pageserver")
+
 	return nil
 }

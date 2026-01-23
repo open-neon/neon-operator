@@ -22,15 +22,15 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	corev1alpha1 "github.com/stateless-pg.io/neon-operator/pkg/api/v1alpha1"
+	corev1alpha1 "github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
 )
 
 const controllerName = "pageserver-controller"
 
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=pageservers,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=pageservers/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=pageservers/finalizers,verbs=update
-// +kubebuilder:rbac:groups=core.stateless-pg.io.io,resources=pageserverprofiles,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=pageservers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=pageservers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=pageservers/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core.stateless-pg.io,resources=pageserverprofiles,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to

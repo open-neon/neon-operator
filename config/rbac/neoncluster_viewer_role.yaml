@@ -1,7 +1,7 @@
-# This rule is not used by the project neon-operator itself.
+# This rule is not used by the project stateless-pg itself.
 # It is provided to allow the cluster admin to help manage permissions for users.
 #
-# Grants read-only access to core.stateless-pg.io.io resources.
+# Grants read-only access to core.stateless-pg.io resources.
 # This role is intended for users who need visibility into these resources
 # without permissions to modify them. It is ideal for monitoring purposes and limited-access viewing.
 
@@ -9,12 +9,12 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    app.kubernetes.io/name: neon-operator
+    app.kubernetes.io/name: stateless-pg
     app.kubernetes.io/managed-by: kustomize
   name: neoncluster-viewer-role
 rules:
 - apiGroups:
-  - core.stateless-pg.io.io
+  - core.stateless-pg.io
   resources:
   - neonclusters
   verbs:
@@ -22,7 +22,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - core.stateless-pg.io.io
+  - core.stateless-pg.io
   resources:
   - neonclusters/status
   verbs:

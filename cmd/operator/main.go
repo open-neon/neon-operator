@@ -36,8 +36,8 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	corev1alpha1 "github.com/stateless-pg.io/neon-operator/pkg/api/v1alpha1"
-	neonclusterController "github.com/stateless-pg.io/neon-operator/pkg/neoncluster"
+	corev1alpha1 "github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	neonclusterController "github.com/stateless-pg/stateless-pg/pkg/neoncluster"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -167,7 +167,7 @@ func main() {
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "bdb0327d.stateless-pg.io.io",
+		LeaderElectionID:       "bdb0327d.stateless-pg.io",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly

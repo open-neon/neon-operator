@@ -6,7 +6,7 @@ import (
 )
 
 // ManagedByLabelValue is the name of this operator.
-const ManagedByLabelValue = "neon-operator"
+const ManagedByLabelValue = "stateless-pg"
 
 // ManagedByLabelKey is the standard Kubernetes label key for managed-by.
 const ManagedByLabelKey = "app.kubernetes.io/managed-by"

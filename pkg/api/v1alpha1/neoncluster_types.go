@@ -105,7 +105,7 @@ type NeonClusterStatus struct {
 // +genclient
 // +k8s:openapi-gen=true
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:categories="neon-operator",shortName="nc"
+// +kubebuilder:resource:categories="stateless-pg",shortName="nc"
 // +kubebuilder:printcolumn:name="Available",type="string",JSONPath=".status.conditions[?(@.type == 'Available')].status"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:subresource:status

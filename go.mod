@@ -1,4 +1,4 @@
-module github.com/stateless-pg.io/neon-operator
+module github.com/stateless-pg/stateless-pg
 
 go 1.24.6
 

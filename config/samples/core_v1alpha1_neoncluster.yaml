@@ -1,8 +1,8 @@
-apiVersion: core.stateless-pg.io.io/v1alpha1
+apiVersion: core.stateless-pg.io/v1alpha1
 kind: NeonCluster
 metadata:
   labels:
-    app.kubernetes.io/name: neon-operator
+    app.kubernetes.io/name: stateless-pg
     app.kubernetes.io/managed-by: kustomize
   name: neoncluster-sample
 spec:

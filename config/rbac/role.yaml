@@ -5,43 +5,8 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - ""
-  resources:
-  - persistentvolumeclaims
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - services
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - services/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - services/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
   - apps
   resources:
-  - deployments
   - statefulsets
   verbs:
   - create
@@ -52,28 +17,15 @@ rules:
   - update
   - watch
 - apiGroups:
-  - apps
-  resources:
-  - deployments/finalizers
-  - statefulsets/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - apps
-  resources:
-  - deployments/status
-  - statefulsets/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - core.stateless-pg.io.io
+  - core.stateless-pg.io
   resources:
   - neonclusters
   - pageserverprofiles
+  - pageservers
   - safekeeperprofiles
+  - safekeepers
   - storagebrokerprofiles
+  - storagebrokers
   verbs:
   - create
   - delete
@@ -83,21 +35,24 @@ rules:
   - update
   - watch
 - apiGroups:
-  - core.stateless-pg.io.io
+  - core.stateless-pg.io
   resources:
   - neonclusters/finalizers
   - pageserverprofiles/finalizers
+  - pageservers/finalizers
   - safekeeperprofiles/finalizers
+  - safekeepers/finalizers
   - storagebrokerprofiles/finalizers
+  - storagebrokers/finalizers
   verbs:
   - update
 - apiGroups:
-  - core.stateless-pg.io.io
+  - core.stateless-pg.io
   resources:
   - neonclusters/status
-  - pageserverprofiles/status
-  - safekeeperprofiles/status
-  - storagebrokerprofiles/status
+  - pageservers/status
+  - safekeepers/status
+  - storagebrokers/status
   verbs:
   - get
   - patch

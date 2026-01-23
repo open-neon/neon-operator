@@ -1,7 +1,7 @@
-# This rule is not used by the project neon-operator itself.
+# This rule is not used by the project stateless-pg itself.
 # It is provided to allow the cluster admin to help manage permissions for users.
 #
-# Grants full permissions ('*') over core.stateless-pg.io.io.
+# Grants full permissions ('*') over core.stateless-pg.io.
 # This role is intended for users authorized to modify roles and bindings within the cluster,
 # enabling them to delegate specific permissions to other users or groups as needed.
 
@@ -9,18 +9,18 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    app.kubernetes.io/name: neon-operator
+    app.kubernetes.io/name: stateless-pg
     app.kubernetes.io/managed-by: kustomize
   name: neoncluster-admin-role
 rules:
 - apiGroups:
-  - core.stateless-pg.io.io
+  - core.stateless-pg.io
   resources:
   - neonclusters
   verbs:
   - '*'
 - apiGroups:
-  - core.stateless-pg.io.io
+  - core.stateless-pg.io
   resources:
   - neonclusters/status
   verbs:

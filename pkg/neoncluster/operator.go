@@ -29,9 +29,9 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/stateless-pg.io/neon-operator/pkg/api/v1alpha1"
-	corev1alpha1 "github.com/stateless-pg.io/neon-operator/pkg/api/v1alpha1"
-	"github.com/stateless-pg.io/neon-operator/pkg/operator"
+	"github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	corev1alpha1 "github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	"github.com/stateless-pg/stateless-pg/pkg/operator"
 )
 
 // Operator manages lifecycle for NeonCluster resources.
@@ -68,7 +68,7 @@ func New(client client.Client, scheme *runtime.Scheme, logger *slog.Logger, conf
 }
 
 // sync runes everytime where there is reconcile event for neocluster.
-func (r *Operator) sync(ctx context.Context, name , namespace string) error {
+func (r *Operator) sync(ctx context.Context, name, namespace string) error {
 	nc, err := r.getNeonCluster(ctx, name, namespace)
 	if err != nil {
 		return err

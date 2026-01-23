@@ -3,46 +3,46 @@
 # and allow the plugins properly work.
 # More info: https://book.kubebuilder.io/reference/project-config.html
 cliVersion: 4.10.1
-domain: stateless-pg.io.io
+domain: stateless-pg.io
 layout:
 - go.kubebuilder.io/v4
-projectName: neon-operator
-repo: github.com/stateless-pg.io/neon-operator
+projectName: stateless-pg
+repo: github.com/stateless-pg/stateless-pg
 resources:
 - api:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: stateless-pg.io.io
+  domain: stateless-pg.io
   group: core
   kind: NeonCluster
-  path: github.com/stateless-pg.io/neon-operator/api/v1alpha1
+  path: github.com/stateless-pg/stateless-pg/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
   controller: false
-  domain: stateless-pg.io.io
+  domain: stateless-pg.io
   group: core
   kind: PageServerProfile
-  path: github.com/stateless-pg.io/neon-operator/pkg/api/v1alpha1
+  path: github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
   controller: false
-  domain: stateless-pg.io.io
+  domain: stateless-pg.io
   group: core
   kind: SafeKeeperProfile
-  path: github.com/stateless-pg.io/neon-operator/pkg/api/v1alpha1
+  path: github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
   controller: false
-  domain: stateless-pg.io.io
+  domain: stateless-pg.io
   group: core
   kind: StorageBrokerProfile
-  path: github.com/stateless-pg.io/neon-operator/pkg/api/v1alpha1
+  path: github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1
   version: v1alpha1
 version: "3"
