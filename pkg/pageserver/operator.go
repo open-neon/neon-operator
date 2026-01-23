@@ -75,7 +75,7 @@ func (o *Operator) sync(ctx context.Context, name, namespace string) error {
 	key := fmt.Sprintf("%s/%s", namespace, name)
 
 	logger := o.logger.With("key", key)
-	logger.Info( "syncing pageserver")
+	logger.Info("syncing pageserver")
 
 	profile := &v1alpha1.PageServerProfile{}
 	if err := o.nclient.Get(ctx, client.ObjectKey{
@@ -89,5 +89,5 @@ func (o *Operator) sync(ctx context.Context, name, namespace string) error {
 		return fmt.Errorf("pageserver does not exist: %s", ps.Spec.ProfileRef.Name)
 	}
 
-	return  nil
+	return nil
 }
