@@ -22,7 +22,6 @@ import (
 	"log/slog"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -58,10 +57,12 @@ func New(nclient client.Client, scheme *runtime.Scheme, logger *slog.Logger, con
 
 // sync reconciles the PageServer resource state with the desired state.
 func (o *Operator) sync(ctx context.Context, name, namespace string) error {
-	key := types.NamespacedName{Name: name, Namespace: namespace}
 
 	ps := &v1alpha1.PageServer{}
-	if err := o.nclient.Get(ctx, key, ps); err != nil {
+	if err := o.nclient.Get(ctx, client.ObjectKey{
+		Name:      name,
+		Namespace: namespace,
+	}, ps); err != nil {
 		return err
 	}
 
@@ -71,8 +72,22 @@ func (o *Operator) sync(ctx context.Context, name, namespace string) error {
 
 	ps = ps.DeepCopy()
 
-	logger := o.logger.With("key", key)
-	logger.Info("syncing pageserver")
+	key := fmt.Sprintf("%s/%s", namespace, name)
 
-	return nil
+	logger := o.logger.With("key", key)
+	logger.Info( "syncing pageserver")
+
+	profile := &v1alpha1.PageServerProfile{}
+	if err := o.nclient.Get(ctx, client.ObjectKey{
+		Name:      ps.Spec.ProfileRef.Name,
+		Namespace: ps.Spec.ProfileRef.Namespace,
+	}, profile); err != nil {
+		return fmt.Errorf("failed to get pageserver profile : %w", err)
+	}
+
+	if profile == nil {
+		return fmt.Errorf("pageserver does not exist: %s", ps.Spec.ProfileRef.Name)
+	}
+
+	return  nil
 }
