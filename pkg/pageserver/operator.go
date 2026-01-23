@@ -107,19 +107,20 @@ func (o *Operator) updateStatefulSet(ctx context.Context, ps *v1alpha1.PageServe
 		}
 	}
 
+	spec, err := makePageServerStatefulSetSpec(profile)
+	if err != nil {
+		return fmt.Errorf("failed to create pageserver statefulset spec: %w", err)
+	}
+	sset, err := makePageServerStatefulSet(ps, profile, spec)
+	if err != nil {
+		return fmt.Errorf("failed to create pageserver statefulset object: %w", err)
+	}
+	hash, err := k8sutils.CreateInputHash(ps.ObjectMeta, spec)
+	if err != nil {
+		return fmt.Errorf("failed to create input hash for pageserver statefulset: %w", err)
+	}
+
 	if notFound {
-		spec, err := makePageServerStatefulSetSpec(profile)
-		if err != nil {
-			return fmt.Errorf("failed to create pageserver statefulset spec: %w", err)
-		}
-		ss, err = makePageServerStatefulSet(ps, profile, spec)
-		if err != nil {
-			return fmt.Errorf("failed to create pageserver statefulset object: %w", err)
-		}
-		hash, err := k8sutils.CreateInputHash(ps.ObjectMeta, spec)
-		if err != nil {
-			return fmt.Errorf("failed to create input hash for pageserver statefulset: %w", err)
-		}
 		if ss.Annotations == nil {
 			ss.Annotations = make(map[string]string)
 		}
@@ -130,6 +131,22 @@ func (o *Operator) updateStatefulSet(ctx context.Context, ps *v1alpha1.PageServe
 			return fmt.Errorf("failed to create pageserver statefulset: %w", err)
 		}
 		return nil
+	}
+
+	if ss.Annotations[k8sutils.InputHashAnnotationKey] == hash {
+		// No update needed
+		return nil
+	}
+
+	ss.Spec = sset.Spec
+	if ss.Annotations == nil {
+		ss.Annotations = make(map[string]string)
+	}
+	ss.Annotations[k8sutils.InputHashAnnotationKey] = hash
+
+	_, err = o.kclient.AppsV1().StatefulSets(ps.GetNamespace()).Update(ctx, ss, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update pageserver statefulset: %w", err)
 	}
 
 	return nil
