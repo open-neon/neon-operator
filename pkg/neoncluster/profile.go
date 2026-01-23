@@ -23,8 +23,8 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	corev1alpha1 "github.com/open-neon/neon-operator/pkg/api/v1alpha1"
-	"github.com/open-neon/neon-operator/pkg/k8s-utils"
+	corev1alpha1 "github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	k8sutils "github.com/stateless-pg/stateless-pg/pkg/k8s-utils"
 )
 
 const (

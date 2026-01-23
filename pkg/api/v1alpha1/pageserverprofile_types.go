@@ -72,7 +72,7 @@ type PageServerProfileSpec struct {
 // +genclient
 // +k8s:openapi-gen=true
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:categories="neon-operator",shortName="psp"
+// +kubebuilder:resource:categories="stateless-pg",shortName="psp"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // PageServerProfile is the Schema for the pageserverprofiles API

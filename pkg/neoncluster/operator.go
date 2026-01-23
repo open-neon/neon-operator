@@ -29,9 +29,9 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/open-neon/neon-operator/pkg/api/v1alpha1"
-	corev1alpha1 "github.com/open-neon/neon-operator/pkg/api/v1alpha1"
-	"github.com/open-neon/neon-operator/pkg/operator"
+	"github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	corev1alpha1 "github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	"github.com/stateless-pg/stateless-pg/pkg/operator"
 )
 
 // Operator manages lifecycle for NeonCluster resources.
@@ -68,15 +68,21 @@ func New(client client.Client, scheme *runtime.Scheme, logger *slog.Logger, conf
 }
 
 // sync runes everytime where there is reconcile event for neocluster.
-func (r *Operator) sync(ctx context.Context, name string, namespace string) error {
-	nc, err := r.getNeonCluster(ctx, name, namespace)
-	if err != nil {
+func (r *Operator) sync(ctx context.Context, name, namespace string) error {
+	nc := &corev1alpha1.NeonCluster{}
+	if err := r.nclient.Get(ctx, client.ObjectKey{
+		Name:      name,
+		Namespace: namespace,
+	}, nc); err != nil {
+		if apierrors.IsNotFound(err) {
+			// NeonCluster resource not found, could have been deleted after reconcile request.
+			// Return and don't requeue
+			return nil
+		}
 		return err
 	}
 
-	if nc == nil {
-		return nil
-	}
+	nc = nc.DeepCopy()
 
 	key := fmt.Sprintf("%s/%s", namespace, name)
 	logger := r.logger.With("key", key)
@@ -100,25 +106,11 @@ func (r *Operator) sync(ctx context.Context, name string, namespace string) erro
 
 }
 
-func (r *Operator) getNeonCluster(ctx context.Context, name string, namespace string) (*corev1alpha1.NeonCluster, error) {
-	nc := &corev1alpha1.NeonCluster{}
-	err := r.nclient.Get(ctx, client.ObjectKey{
-		Name:      name,
-		Namespace: namespace,
-	}, nc)
-	if err != nil {
-		return nil, err
-	}
-
-	return nc.DeepCopy(), nil
-}
-
 func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluster, profile *v1alpha1.PageServerProfile, logger *slog.Logger) error {
-	psname := fmt.Sprintf("%s-pageserver", nc.Name)
 
 	ps := &v1alpha1.PageServer{}
 	err := r.nclient.Get(ctx, client.ObjectKey{
-		Name:      psname,
+		Name:      nc.Name,
 		Namespace: nc.Namespace,
 	}, ps)
 
@@ -142,7 +134,7 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 	if notFound {
 		ps = &v1alpha1.PageServer{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      psname,
+				Name:      nc.Name,
 				Namespace: nc.Namespace,
 			},
 			Spec: v1alpha1.PageServerSpec{
@@ -187,7 +179,7 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 }
 
 func (r *Operator) updateSafeKeeper(ctx context.Context, nc *v1alpha1.NeonCluster, profile *v1alpha1.SafeKeeperProfile, logger *slog.Logger) error {
-	skname := fmt.Sprintf("%s-safekeeper", nc.Name)
+	skname := nc.Name
 
 	sk := &v1alpha1.SafeKeeper{}
 	err := r.nclient.Get(ctx, client.ObjectKey{
@@ -260,7 +252,7 @@ func (r *Operator) updateSafeKeeper(ctx context.Context, nc *v1alpha1.NeonCluste
 }
 
 func (r *Operator) updateStorageBroker(ctx context.Context, nc *v1alpha1.NeonCluster, profile *v1alpha1.StorageBrokerProfile, logger *slog.Logger) error {
-	sbname := fmt.Sprintf("%s-storagebroker", nc.Name)
+	sbname := nc.Name
 
 	sb := &v1alpha1.StorageBroker{}
 	err := r.nclient.Get(ctx, client.ObjectKey{

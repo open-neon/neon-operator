@@ -46,7 +46,7 @@ type StorageBrokerProfileSpec struct {
 // +genclient
 // +k8s:openapi-gen=true
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:categories="neon-operator",shortName="sbp"
+// +kubebuilder:resource:categories="stateless-pg",shortName="sbp"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // StorageBrokerProfile is the Schema for the storagebrokerprofiles API

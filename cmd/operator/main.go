@@ -36,8 +36,11 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	corev1alpha1 "github.com/open-neon/neon-operator/pkg/api/v1alpha1"
-	neonclusterController "github.com/open-neon/neon-operator/pkg/neoncluster"
+	corev1alpha1 "github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	neonclusterController "github.com/stateless-pg/stateless-pg/pkg/neoncluster"
+	pageserverController "github.com/stateless-pg/stateless-pg/pkg/pageserver"
+	safekeeperController "github.com/stateless-pg/stateless-pg/pkg/safekeeper"
+	storagebrokerController "github.com/stateless-pg/stateless-pg/pkg/storagebroker"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -167,7 +170,7 @@ func main() {
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "bdb0327d.open-neon.io",
+		LeaderElectionID:       "bdb0327d.stateless-pg.io",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
@@ -193,6 +196,39 @@ func main() {
 
 	if err := nco.SetupWithManager(mgr); err != nil {
 		logger.Error("unable to create controller", "error", err, "controller", "NeonCluster")
+		os.Exit(1)
+	}
+
+	pso, err := pageserverController.New(mgr.GetClient(), mgr.GetScheme(), logger, mgr.GetConfig())
+	if err != nil {
+		logger.Error("unable to create controller", "error", err, "controller", "PageServer")
+		os.Exit(1)
+	}
+
+	if err := pso.SetupWithManager(mgr); err != nil {
+		logger.Error("unable to create controller", "error", err, "controller", "PageServer")
+		os.Exit(1)
+	}
+
+	sko, err := safekeeperController.New(mgr.GetClient(), mgr.GetScheme(), logger, mgr.GetConfig())
+	if err != nil {
+		logger.Error("unable to create controller", "error", err, "controller", "SafeKeeper")
+		os.Exit(1)
+	}
+
+	if err := sko.SetupWithManager(mgr); err != nil {
+		logger.Error("unable to create controller", "error", err, "controller", "SafeKeeper")
+		os.Exit(1)
+	}
+
+	sbo, err := storagebrokerController.New(mgr.GetClient(), mgr.GetScheme(), logger, mgr.GetConfig())
+	if err != nil {
+		logger.Error("unable to create controller", "error", err, "controller", "StorageBroker")
+		os.Exit(1)
+	}
+
+	if err := sbo.SetupWithManager(mgr); err != nil {
+		logger.Error("unable to create controller", "error", err, "controller", "StorageBroker")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

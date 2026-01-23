@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pageserver
+package safekeeper
 
 import (
 	"github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
@@ -28,23 +28,23 @@ const (
 	NeonDefaultImage = "ghcr.io/neondatabase/neon:latest"
 )
 
-// makePageServerStatefulSet creates a StatefulSet for the Page Server component
-func makePageServerStatefulSet(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerProfile, spec *appsv1.StatefulSetSpec) (*appsv1.StatefulSet, error) {
+// makeSafeKeeperStatefulSet creates a StatefulSet for the SafeKeeper component
+func makeSafeKeeperStatefulSet(sk *v1alpha1.SafeKeeper, skp *v1alpha1.SafeKeeperProfile, spec *appsv1.StatefulSetSpec) (*appsv1.StatefulSet, error) {
 
 	statefulSet := &appsv1.StatefulSet{
 		Spec: *spec,
 	}
 
 	operator.UpdateObject(statefulSet,
-		operator.WithLabels(ps.Labels),
-		operator.WithOwner(ps),
+		operator.WithLabels(sk.Labels),
+		operator.WithOwner(sk),
 	)
 
 	return statefulSet, nil
 }
 
-func makePageServerStatefulSetSpec(psp *v1alpha1.PageServerProfile) (*appsv1.StatefulSetSpec, error) {
-	cpf := psp.Spec.CommonFields
+func makeSafeKeeperStatefulSetSpec(skp *v1alpha1.SafeKeeperProfile) (*appsv1.StatefulSetSpec, error) {
+	cpf := skp.Spec.CommonFields
 
 	image := NeonDefaultImage
 	if cpf.Image != nil {
@@ -53,27 +53,27 @@ func makePageServerStatefulSetSpec(psp *v1alpha1.PageServerProfile) (*appsv1.Sta
 
 	// Set replicas (using MinReplicas as the desired count)
 	replicas := int32(1)
-	if psp.Spec.MinReplicas != nil {
-		replicas = int32(*psp.Spec.MinReplicas)
+	if skp.Spec.MinReplicas != nil {
+		replicas = int32(*skp.Spec.MinReplicas)
 	}
 
 	// Build pod labels
 	labels := map[string]string{
-		"app":       "pageserver",
-		"component": "pageserver-statefulset",
+		"app":       "safekeeper",
+		"component": "safekeeper-statefulset",
 	}
 
 	container := corev1.Container{
-		Name:            "pageserver",
+		Name:            "safekeeper",
 		Image:           image,
 		ImagePullPolicy: cpf.ImagePullPolicy,
 		Resources:       cpf.Resources,
-		VolumeMounts:    psp.Spec.VolumeMounts,
+		VolumeMounts:    skp.Spec.VolumeMounts,
 	}
 
 	// Add storage volume mount if storage is specified
-	if psp.Spec.Storage != nil {
-		if psp.Spec.Storage.EmptyDir == nil && psp.Spec.Storage.Ephemeral == nil {
+	if skp.Spec.Storage != nil {
+		if skp.Spec.Storage.EmptyDir == nil && skp.Spec.Storage.Ephemeral == nil {
 			container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
 				Name:      "data",
 				MountPath: "/data",
@@ -91,24 +91,24 @@ func makePageServerStatefulSetSpec(psp *v1alpha1.PageServerProfile) (*appsv1.Sta
 			NodeSelector:     cpf.NodeSelector,
 			Affinity:         cpf.Affinity,
 			SecurityContext:  cpf.SecurityContext,
-			Volumes:          psp.Spec.Volumes,
+			Volumes:          skp.Spec.Volumes,
 		},
 	}
 
 	// Add storage volumes if specified
-	if psp.Spec.Storage != nil {
-		if psp.Spec.Storage.EmptyDir != nil {
+	if skp.Spec.Storage != nil {
+		if skp.Spec.Storage.EmptyDir != nil {
 			podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
 				Name: "data",
 				VolumeSource: corev1.VolumeSource{
-					EmptyDir: psp.Spec.Storage.EmptyDir,
+					EmptyDir: skp.Spec.Storage.EmptyDir,
 				},
 			})
-		} else if psp.Spec.Storage.Ephemeral != nil {
+		} else if skp.Spec.Storage.Ephemeral != nil {
 			podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
 				Name: "data",
 				VolumeSource: corev1.VolumeSource{
-					Ephemeral: psp.Spec.Storage.Ephemeral,
+					Ephemeral: skp.Spec.Storage.Ephemeral,
 				},
 			})
 		}
@@ -119,14 +119,14 @@ func makePageServerStatefulSetSpec(psp *v1alpha1.PageServerProfile) (*appsv1.Sta
 		Selector: &metav1.LabelSelector{
 			MatchLabels: labels,
 		},
-		ServiceName:                          "pageserver",
+		ServiceName:                          "safekeeper",
 		Template:                             podTemplateSpec,
-		PersistentVolumeClaimRetentionPolicy: psp.Spec.PersistentVolumeClaimRetentionPolicy,
+		PersistentVolumeClaimRetentionPolicy: skp.Spec.PersistentVolumeClaimRetentionPolicy,
 	}
 
 	// Add VolumeClaimTemplates if persistent storage is configured
-	if psp.Spec.Storage != nil && psp.Spec.Storage.EmptyDir == nil && psp.Spec.Storage.Ephemeral == nil {
-		pvc := psp.Spec.Storage.VolumeClaimTemplate
+	if skp.Spec.Storage != nil && skp.Spec.Storage.EmptyDir == nil && skp.Spec.Storage.Ephemeral == nil {
+		pvc := skp.Spec.Storage.VolumeClaimTemplate
 		if pvc.EmbeddedObjectMetadata.Name == "" {
 			pvc.EmbeddedObjectMetadata.Name = "data"
 		}
