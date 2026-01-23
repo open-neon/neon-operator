@@ -22,12 +22,14 @@ import (
 	"log/slog"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1alpha1 "github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	k8sutils "github.com/stateless-pg/stateless-pg/pkg/k8s-utils"
 )
 
 // Operator manages lifecycle for PageServer resources.
@@ -83,6 +85,51 @@ func (o *Operator) sync(ctx context.Context, name, namespace string) error {
 		Namespace: ps.Spec.ProfileRef.Namespace,
 	}, profile); err != nil {
 		return fmt.Errorf("failed to get pageserver profile : %w", err)
+	}
+
+	profile = profile.DeepCopy()
+
+	if err := o.updateStatefulSet(ctx, ps, profile); err != nil {
+		return fmt.Errorf("failed to reconcile pageserver statefulset: %w", err)
+	}
+
+	return nil
+}
+
+func (o *Operator) updateStatefulSet(ctx context.Context, ps *v1alpha1.PageServer, profile *v1alpha1.PageServerProfile) error {
+	ss, err := o.kclient.AppsV1().StatefulSets(ps.GetNamespace()).Get(ctx, ps.GetName(), metav1.GetOptions{})
+	notFound := false
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			notFound = true
+		} else {
+			return fmt.Errorf("failed to get pageserver statefulset: %w", err)
+		}
+	}
+
+	if notFound {
+		spec, err := makePageServerStatefulSetSpec(profile)
+		if err != nil {
+			return fmt.Errorf("failed to create pageserver statefulset spec: %w", err)
+		}
+		ss, err = makePageServerStatefulSet(ps, profile, spec)
+		if err != nil {
+			return fmt.Errorf("failed to create pageserver statefulset object: %w", err)
+		}
+		hash, err := k8sutils.CreateInputHash(ps.ObjectMeta, spec)
+		if err != nil {
+			return fmt.Errorf("failed to create input hash for pageserver statefulset: %w", err)
+		}
+		if ss.Annotations == nil {
+			ss.Annotations = make(map[string]string)
+		}
+		ss.Annotations[k8sutils.InputHashAnnotationKey] = hash
+
+		_, err = o.kclient.AppsV1().StatefulSets(ps.GetNamespace()).Create(ctx, ss, metav1.CreateOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to create pageserver statefulset: %w", err)
+		}
+		return nil
 	}
 
 	return nil

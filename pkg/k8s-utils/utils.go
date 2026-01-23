@@ -26,7 +26,7 @@ func GetOperatorNamespace() string {
 	return namespace
 }
 
-func createInputHash(objMeta metav1.ObjectMeta, spec interface{}) (string, error) {
+func CreateInputHash(objMeta metav1.ObjectMeta, spec interface{}) (string, error) {
 	// Get all annotations and exclude the input hash annotation
 	filteredAnnotations := make(map[string]string)
 	for k, v := range objMeta.Annotations {

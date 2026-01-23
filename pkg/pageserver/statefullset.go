@@ -29,11 +29,7 @@ const (
 )
 
 // makePageServerStatefulSet creates a StatefulSet for the Page Server component
-func makePageServerStatefulSet(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerProfile) (*appsv1.StatefulSet, error) {
-	spec, err := makePageServerStatefulSetSpec(ps, psp)
-	if err != nil {
-		return nil, err
-	}
+func makePageServerStatefulSet(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerProfile, spec *appsv1.StatefulSetSpec) (*appsv1.StatefulSet, error) {
 
 	statefulSet := &appsv1.StatefulSet{
 		Spec: *spec,
@@ -47,7 +43,7 @@ func makePageServerStatefulSet(ps *v1alpha1.PageServer, psp *v1alpha1.PageServer
 	return statefulSet, nil
 }
 
-func makePageServerStatefulSetSpec(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerProfile) (*appsv1.StatefulSetSpec, error) {
+func makePageServerStatefulSetSpec(psp *v1alpha1.PageServerProfile) (*appsv1.StatefulSetSpec, error) {
 	cpf := psp.Spec.CommonFields
 
 	image := NeonDefaultImage
