@@ -3,6 +3,12 @@
 # It should be run by config/default
 resources:
 - bases/core.stateless-pg.io_neonclusters.yaml
+- bases/core.stateless-pg.io_pageservers.yaml
+- bases/core.stateless-pg.io_pageserverprofiles.yaml
+- bases/core.stateless-pg.io_safekeepers.yaml
+- bases/core.stateless-pg.io_safekeeperprofiles.yaml
+- bases/core.stateless-pg.io_storagebrokers.yaml
+- bases/core.stateless-pg.io_storagebrokerprofiles.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:

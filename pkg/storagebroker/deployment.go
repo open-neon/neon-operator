@@ -16,117 +16,117 @@ limitations under the License.
 
 package neoncluster
 
-import (
-	"github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
-	"github.com/stateless-pg/stateless-pg/pkg/operator"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
+// import (
+// 	"github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+// 	"github.com/stateless-pg/stateless-pg/pkg/operator"
+// 	appsv1 "k8s.io/api/apps/v1"
+// 	corev1 "k8s.io/api/core/v1"
+// 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+// )
 
-// makeSafekeeperDeployment creates a Deployment for the Safekeeper component
-// based on the provided NeonCluster specification.
-func makeSafekeeperDeployment(nc *v1alpha1.NeonCluster) (*appsv1.Deployment, error) {
-	spec, err := makeSafekeeperDeploymentSpec(nc)
-	if err != nil {
-		return nil, err
-	}
+// // makeSafekeeperDeployment creates a Deployment for the Safekeeper component
+// // based on the provided NeonCluster specification.
+// func makeSafekeeperDeployment(nc *v1alpha1.NeonCluster) (*appsv1.Deployment, error) {
+// 	spec, err := makeSafekeeperDeploymentSpec(nc)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	deployment := &appsv1.Deployment{
-		Spec: *spec,
-	}
+// 	deployment := &appsv1.Deployment{
+// 		Spec: *spec,
+// 	}
 
-	operator.UpdateObject(deployment,
-		operator.WithLabels(map[string]string{
-			"neoncluster": nc.Name,
-			"app":         "safekeeper",
-		}),
-		operator.WithOwner(nc),
-	)
+// 	operator.UpdateObject(deployment,
+// 		operator.WithLabels(map[string]string{
+// 			"neoncluster": nc.Name,
+// 			"app":         "safekeeper",
+// 		}),
+// 		operator.WithOwner(nc),
+// 	)
 
-	return deployment, nil
-}
+// 	return deployment, nil
+// }
 
-func makeSafekeeperDeploymentSpec(nc *v1alpha1.NeonCluster) (*appsv1.DeploymentSpec, error) {
-	cpf := nc.Spec.SafeKeeper.CommonFields
-	sk := nc.Spec.SafeKeeper
+// func makeSafekeeperDeploymentSpec(nc *v1alpha1.NeonCluster) (*appsv1.DeploymentSpec, error) {
+// 	cpf := nc.Spec.SafeKeeper.CommonFields
+// 	sk := nc.Spec.SafeKeeper
 
-	image := NeonDefaultImage
-	if cpf.Image != nil {
-		image = *cpf.Image
-	}
+// 	image := NeonDefaultImage
+// 	if cpf.Image != nil {
+// 		image = *cpf.Image
+// 	}
 
-	// Set replicas (using MinReplicas as the desired count)
-	replicas := int32(3)
-	if sk.MinReplicas != nil {
-		replicas = int32(*sk.MinReplicas)
-	}
+// 	// Set replicas (using MinReplicas as the desired count)
+// 	replicas := int32(3)
+// 	if sk.MinReplicas != nil {
+// 		replicas = int32(*sk.MinReplicas)
+// 	}
 
-	// Build pod labels
-	labels := map[string]string{
-		"app":         "safekeeper",
-		"component":   "safekeeper",
-		"neoncluster": nc.Name,
-	}
+// 	// Build pod labels
+// 	labels := map[string]string{
+// 		"app":         "safekeeper",
+// 		"component":   "safekeeper",
+// 		"neoncluster": nc.Name,
+// 	}
 
-	container := corev1.Container{
-		Name:            "safekeeper",
-		Image:           image,
-		ImagePullPolicy: cpf.ImagePullPolicy,
-		Resources:       cpf.Resources,
-		VolumeMounts:    sk.VolumeMounts,
-	}
+// 	container := corev1.Container{
+// 		Name:            "safekeeper",
+// 		Image:           image,
+// 		ImagePullPolicy: cpf.ImagePullPolicy,
+// 		Resources:       cpf.Resources,
+// 		VolumeMounts:    sk.VolumeMounts,
+// 	}
 
-	// Add storage volume mount if storage is specified
-	if sk.Storage != nil {
-		if sk.Storage.EmptyDir != nil || sk.Storage.Ephemeral != nil {
-			container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-				Name:      "data",
-				MountPath: "/data",
-			})
-		}
-	}
+// 	// Add storage volume mount if storage is specified
+// 	if sk.Storage != nil {
+// 		if sk.Storage.EmptyDir != nil || sk.Storage.Ephemeral != nil {
+// 			container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+// 				Name:      "data",
+// 				MountPath: "/data",
+// 			})
+// 		}
+// 	}
 
-	podTemplateSpec := corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: labels,
-		},
-		Spec: corev1.PodSpec{
-			Containers:       []corev1.Container{container},
-			ImagePullSecrets: cpf.ImagePullSecrets,
-			NodeSelector:     cpf.NodeSelector,
-			Affinity:         cpf.Affinity,
-			SecurityContext:  cpf.SecurityContext,
-			Volumes:          sk.Volumes,
-		},
-	}
+// 	podTemplateSpec := corev1.PodTemplateSpec{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Labels: labels,
+// 		},
+// 		Spec: corev1.PodSpec{
+// 			Containers:       []corev1.Container{container},
+// 			ImagePullSecrets: cpf.ImagePullSecrets,
+// 			NodeSelector:     cpf.NodeSelector,
+// 			Affinity:         cpf.Affinity,
+// 			SecurityContext:  cpf.SecurityContext,
+// 			Volumes:          sk.Volumes,
+// 		},
+// 	}
 
-	// Add storage volumes if specified (Deployment only supports EmptyDir or Ephemeral)
-	if sk.Storage != nil {
-		if sk.Storage.EmptyDir != nil {
-			podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
-				Name: "data",
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: sk.Storage.EmptyDir,
-				},
-			})
-		} else if sk.Storage.Ephemeral != nil {
-			podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
-				Name: "data",
-				VolumeSource: corev1.VolumeSource{
-					Ephemeral: sk.Storage.Ephemeral,
-				},
-			})
-		}
-	}
+// 	// Add storage volumes if specified (Deployment only supports EmptyDir or Ephemeral)
+// 	if sk.Storage != nil {
+// 		if sk.Storage.EmptyDir != nil {
+// 			podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
+// 				Name: "data",
+// 				VolumeSource: corev1.VolumeSource{
+// 					EmptyDir: sk.Storage.EmptyDir,
+// 				},
+// 			})
+// 		} else if sk.Storage.Ephemeral != nil {
+// 			podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
+// 				Name: "data",
+// 				VolumeSource: corev1.VolumeSource{
+// 					Ephemeral: sk.Storage.Ephemeral,
+// 				},
+// 			})
+// 		}
+// 	}
 
-	spec := appsv1.DeploymentSpec{
-		Replicas: &replicas,
-		Selector: &metav1.LabelSelector{
-			MatchLabels: labels,
-		},
-		Template: podTemplateSpec,
-	}
+// 	spec := appsv1.DeploymentSpec{
+// 		Replicas: &replicas,
+// 		Selector: &metav1.LabelSelector{
+// 			MatchLabels: labels,
+// 		},
+// 		Template: podTemplateSpec,
+// 	}
 
-	return &spec, nil
-}
+// 	return &spec, nil
+// }
