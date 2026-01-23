@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"maps"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -139,9 +140,11 @@ func (o *Operator) updateStatefulSet(ctx context.Context, ps *v1alpha1.PageServe
 	}
 
 	ss.Spec = sset.Spec
+	ss.Labels = sset.Labels
 	if ss.Annotations == nil {
 		ss.Annotations = make(map[string]string)
 	}
+	maps.Copy(ss.Annotations, sset.Annotations)
 	ss.Annotations[k8sutils.InputHashAnnotationKey] = hash
 
 	_, err = o.kclient.AppsV1().StatefulSets(ps.GetNamespace()).Update(ctx, ss, metav1.UpdateOptions{})
