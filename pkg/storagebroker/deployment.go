@@ -14,119 +14,84 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package neoncluster
+package storagebroker
 
-// import (
-// 	"github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
-// 	"github.com/stateless-pg/stateless-pg/pkg/operator"
-// 	appsv1 "k8s.io/api/apps/v1"
-// 	corev1 "k8s.io/api/core/v1"
-// 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-// )
+import (
+	"github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	"github.com/stateless-pg/stateless-pg/pkg/operator"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
-// // makeSafekeeperDeployment creates a Deployment for the Safekeeper component
-// // based on the provided NeonCluster specification.
-// func makeSafekeeperDeployment(nc *v1alpha1.NeonCluster) (*appsv1.Deployment, error) {
-// 	spec, err := makeSafekeeperDeploymentSpec(nc)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+const (
+	NeonDefaultImage = "ghcr.io/neondatabase/neon:latest"
+)
 
-// 	deployment := &appsv1.Deployment{
-// 		Spec: *spec,
-// 	}
+// makeStorageBrokerDeployment creates a Deployment for the StorageBroker component
+func makeStorageBrokerDeployment(sb *v1alpha1.StorageBroker, sbp *v1alpha1.StorageBrokerProfile, spec *appsv1.DeploymentSpec) (*appsv1.Deployment, error) {
 
-// 	operator.UpdateObject(deployment,
-// 		operator.WithLabels(map[string]string{
-// 			"neoncluster": nc.Name,
-// 			"app":         "safekeeper",
-// 		}),
-// 		operator.WithOwner(nc),
-// 	)
+	deployment := &appsv1.Deployment{
+		Spec: *spec,
+	}
 
-// 	return deployment, nil
-// }
+	operator.UpdateObject(deployment,
+		operator.WithLabels(sb.Labels),
+		operator.WithOwner(sb),
+	)
 
-// func makeSafekeeperDeploymentSpec(nc *v1alpha1.NeonCluster) (*appsv1.DeploymentSpec, error) {
-// 	cpf := nc.Spec.SafeKeeper.CommonFields
-// 	sk := nc.Spec.SafeKeeper
+	return deployment, nil
+}
 
-// 	image := NeonDefaultImage
-// 	if cpf.Image != nil {
-// 		image = *cpf.Image
-// 	}
+func makeStorageBrokerDeploymentSpec(sb *v1alpha1.StorageBroker, sbp *v1alpha1.StorageBrokerProfile) (*appsv1.DeploymentSpec, error) {
+	cpf := sbp.Spec.CommonFields
 
-// 	// Set replicas (using MinReplicas as the desired count)
-// 	replicas := int32(3)
-// 	if sk.MinReplicas != nil {
-// 		replicas = int32(*sk.MinReplicas)
-// 	}
+	image := NeonDefaultImage
+	if cpf.Image != nil {
+		image = *cpf.Image
+	}
 
-// 	// Build pod labels
-// 	labels := map[string]string{
-// 		"app":         "safekeeper",
-// 		"component":   "safekeeper",
-// 		"neoncluster": nc.Name,
-// 	}
+	// Set replicas - use StorageBroker.Spec.Replicas if set, otherwise fall back to profile MinReplicas
+	replicas := int32(1)
+	if sb.Spec.Replicas != nil {
+		replicas = *sb.Spec.Replicas
+	} else if sbp.Spec.MinReplicas != nil {
+		replicas = int32(*sbp.Spec.MinReplicas)
+	}
 
-// 	container := corev1.Container{
-// 		Name:            "safekeeper",
-// 		Image:           image,
-// 		ImagePullPolicy: cpf.ImagePullPolicy,
-// 		Resources:       cpf.Resources,
-// 		VolumeMounts:    sk.VolumeMounts,
-// 	}
+	// Build pod labels
+	labels := map[string]string{
+		"app":       "storagebroker",
+		"component": "storagebroker-deployment",
+	}
 
-// 	// Add storage volume mount if storage is specified
-// 	if sk.Storage != nil {
-// 		if sk.Storage.EmptyDir != nil || sk.Storage.Ephemeral != nil {
-// 			container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-// 				Name:      "data",
-// 				MountPath: "/data",
-// 			})
-// 		}
-// 	}
+	container := corev1.Container{
+		Name:            "storagebroker",
+		Image:           image,
+		ImagePullPolicy: cpf.ImagePullPolicy,
+		Resources:       cpf.Resources,
+	}
 
-// 	podTemplateSpec := corev1.PodTemplateSpec{
-// 		ObjectMeta: metav1.ObjectMeta{
-// 			Labels: labels,
-// 		},
-// 		Spec: corev1.PodSpec{
-// 			Containers:       []corev1.Container{container},
-// 			ImagePullSecrets: cpf.ImagePullSecrets,
-// 			NodeSelector:     cpf.NodeSelector,
-// 			Affinity:         cpf.Affinity,
-// 			SecurityContext:  cpf.SecurityContext,
-// 			Volumes:          sk.Volumes,
-// 		},
-// 	}
+	podTemplateSpec := corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: labels,
+		},
+		Spec: corev1.PodSpec{
+			Containers:       []corev1.Container{container},
+			ImagePullSecrets: cpf.ImagePullSecrets,
+			NodeSelector:     cpf.NodeSelector,
+			Affinity:         cpf.Affinity,
+			SecurityContext:  cpf.SecurityContext,
+		},
+	}
 
-// 	// Add storage volumes if specified (Deployment only supports EmptyDir or Ephemeral)
-// 	if sk.Storage != nil {
-// 		if sk.Storage.EmptyDir != nil {
-// 			podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
-// 				Name: "data",
-// 				VolumeSource: corev1.VolumeSource{
-// 					EmptyDir: sk.Storage.EmptyDir,
-// 				},
-// 			})
-// 		} else if sk.Storage.Ephemeral != nil {
-// 			podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
-// 				Name: "data",
-// 				VolumeSource: corev1.VolumeSource{
-// 					Ephemeral: sk.Storage.Ephemeral,
-// 				},
-// 			})
-// 		}
-// 	}
+	spec := appsv1.DeploymentSpec{
+		Replicas: &replicas,
+		Selector: &metav1.LabelSelector{
+			MatchLabels: labels,
+		},
+		Template: podTemplateSpec,
+	}
 
-// 	spec := appsv1.DeploymentSpec{
-// 		Replicas: &replicas,
-// 		Selector: &metav1.LabelSelector{
-// 			MatchLabels: labels,
-// 		},
-// 		Template: podTemplateSpec,
-// 	}
-
-// 	return &spec, nil
-// }
+	return &spec, nil
+}

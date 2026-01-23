@@ -40,6 +40,7 @@ import (
 	neonclusterController "github.com/stateless-pg/stateless-pg/pkg/neoncluster"
 	pageserverController "github.com/stateless-pg/stateless-pg/pkg/pageserver"
 	safekeeperController "github.com/stateless-pg/stateless-pg/pkg/safekeeper"
+	storagebrokerController "github.com/stateless-pg/stateless-pg/pkg/storagebroker"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -217,6 +218,17 @@ func main() {
 
 	if err := sko.SetupWithManager(mgr); err != nil {
 		logger.Error("unable to create controller", "error", err, "controller", "SafeKeeper")
+		os.Exit(1)
+	}
+
+	sbo, err := storagebrokerController.New(mgr.GetClient(), mgr.GetScheme(), logger, mgr.GetConfig())
+	if err != nil {
+		logger.Error("unable to create controller", "error", err, "controller", "StorageBroker")
+		os.Exit(1)
+	}
+
+	if err := sbo.SetupWithManager(mgr); err != nil {
+		logger.Error("unable to create controller", "error", err, "controller", "StorageBroker")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
