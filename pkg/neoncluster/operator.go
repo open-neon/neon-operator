@@ -68,7 +68,7 @@ func New(client client.Client, scheme *runtime.Scheme, logger *slog.Logger, conf
 }
 
 // sync runes everytime where there is reconcile event for neocluster.
-func (r *Operator) sync(ctx context.Context, name string, namespace string) error {
+func (r *Operator) sync(ctx context.Context, name , namespace string) error {
 	nc, err := r.getNeonCluster(ctx, name, namespace)
 	if err != nil {
 		return err

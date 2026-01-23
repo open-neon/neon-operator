@@ -17,6 +17,7 @@ limitations under the License.
 package pageserver
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
@@ -50,4 +51,14 @@ func New(nclient client.Client, scheme *runtime.Scheme, logger *slog.Logger, con
 		kclient: kclient,
 		scheme:  scheme,
 	}, nil
+}
+
+// Sync reconciles the PageServer resource state with the desired state.
+func (o *Operator) sync(ctx context.Context, name, namespace string) error {
+
+	
+	key := fmt.Sprintf("%s/%s", namespace, name)
+	logger := o.logger.With("key", key)
+	logger.Info("syncing pageServer")
+	return nil
 }

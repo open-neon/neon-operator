@@ -52,7 +52,7 @@ func makePageServerStatefulSet(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSet, e
 	return statefulSet, nil
 }
 
-func makePageServerStatefulSetSpec(nc *v1alpha1.NeonCluster) (*appsv1.StatefulSetSpec, error) {
+func makePageServerStatefulSetSpec(ps *v1alpha1.PageServer) (*appsv1.StatefulSetSpec, error) {
 	cpf := nc.Spec.Pageserver.CommonFields
 	ps := nc.Spec.Pageserver
 
