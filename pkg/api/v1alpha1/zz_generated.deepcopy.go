@@ -493,11 +493,6 @@ func (in *PageServerSpec) DeepCopyInto(out *PageServerSpec) {
 		*out = new(int32)
 		**out = **in
 	}
-	if in.NodeId != nil {
-		in, out := &in.NodeId, &out.NodeId
-		*out = new(int32)
-		**out = **in
-	}
 	in.ObjectStorage.DeepCopyInto(&out.ObjectStorage)
 }
 
@@ -745,11 +740,6 @@ func (in *SafeKeeperSpec) DeepCopyInto(out *SafeKeeperSpec) {
 	}
 	if in.Replicas != nil {
 		in, out := &in.Replicas, &out.Replicas
-		*out = new(int32)
-		**out = **in
-	}
-	if in.NodeId != nil {
-		in, out := &in.NodeId, &out.NodeId
 		*out = new(int32)
 		**out = **in
 	}

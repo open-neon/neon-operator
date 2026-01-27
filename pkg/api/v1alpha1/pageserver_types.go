@@ -40,10 +40,6 @@ type PageServerSpec struct {
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
 
-	// nodeId is the unique identifier for this PageServer instance
-	// +optional
-	NodeId *int32 `json:"nodeId,omitempty"`
-
 	// objectStorage defines the configuration for object storage used by Neon components
 	// +required
 	ObjectStorage ObjectStorageSpec `json:"objectStorage"`

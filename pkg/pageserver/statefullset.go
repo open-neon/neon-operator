@@ -87,11 +87,29 @@ func makePageServerStatefulSetSpec(psName string, psp *v1alpha1.PageServerProfil
 		MountPath: "/data/.neon",
 	})
 
+	// Init container to generate identity.toml with pod name as id
+	initContainer := corev1.Container{
+		Name:  "identity-generator",
+		Image: image,
+		Command: []string{
+			"sh",
+			"-c",
+			"echo \"id=$(hostname)\" > /data/.neon/identity.toml",
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "config",
+				MountPath: "/data/.neon",
+			},
+		},
+	}
+
 	podTemplateSpec := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: labels,
 		},
 		Spec: corev1.PodSpec{
+			InitContainers:   []corev1.Container{initContainer},
 			Containers:       []corev1.Container{container},
 			ImagePullSecrets: cpf.ImagePullSecrets,
 			NodeSelector:     cpf.NodeSelector,

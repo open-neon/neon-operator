@@ -39,10 +39,6 @@ type SafeKeeperSpec struct {
 	// +kubebuilder:validation:Minimum=3
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
-
-	// nodeId is the unique identifier for this SafeKeeper instance
-	// +optional
-	NodeId *int32 `json:"nodeId,omitempty"`
 }
 
 // SafeKeeperStatus defines the observed state of SafeKeeper.
