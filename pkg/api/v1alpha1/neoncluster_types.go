@@ -87,6 +87,7 @@ type ObjectStorageSpec struct {
 }
 
 // NeonClusterStatus defines the observed state of NeonCluster.
+// +k8s:openapi-gen=true
 type NeonClusterStatus struct {
 	// For Kubernetes API conventions, see:
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
