@@ -18,14 +18,11 @@ package pageserver
 
 import (
 	"github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	k8sutils "github.com/stateless-pg/stateless-pg/pkg/k8s-utils"
 	"github.com/stateless-pg/stateless-pg/pkg/operator"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-const (
-	NeonDefaultImage = "ghcr.io/neondatabase/neon:latest"
 )
 
 // makePageServerStatefulSet creates a StatefulSet for the Page Server component
@@ -46,7 +43,7 @@ func makePageServerStatefulSet(ps *v1alpha1.PageServer, spec *appsv1.StatefulSet
 func makePageServerStatefulSetSpec(psName string, psp *v1alpha1.PageServerProfile) (*appsv1.StatefulSetSpec, error) {
 	cpf := psp.Spec.CommonFields
 
-	image := NeonDefaultImage
+	image := k8sutils.NeonDefaultImage
 	if cpf.Image != nil {
 		image = *cpf.Image
 	}
