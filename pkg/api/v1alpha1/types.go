@@ -77,9 +77,6 @@ type EmbeddedObjectMetadata struct {
 //
 // +k8s:openapi-gen=true
 type StorageSpec struct {
-	// disableMountSubPath deprecated: subPath usage will be removed in a future release.
-	// +optional
-	DisableMountSubPath bool `json:"disableMountSubPath,omitempty"` // nolint:kubeapilinter
 	// emptyDir to be used by the StatefulSet.
 	// If specified, it takes precedence over `ephemeral` and `volumeClaimTemplate`.
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes/#emptydir
