@@ -53,6 +53,10 @@ type NeonClusterSpec struct {
 // ObjectStorageSpec defines the configuration for object storage used by Neon components.
 // +k8s:openapi-gen=true
 type ObjectStorageSpec struct {
+	// provider defines the backend.
+	// +kubebuilder:validation:Enum=s3;gcs;azure;minio;local
+	Provider string `json:"provider"`
+	
 	// endpoint is the URL of the object storage service
 	// +required
 	Endpoint string `json:"endpoint"`
