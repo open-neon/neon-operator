@@ -18,18 +18,15 @@ package pageserver
 
 import (
 	"github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	k8sutils "github.com/stateless-pg/stateless-pg/pkg/k8s-utils"
 	"github.com/stateless-pg/stateless-pg/pkg/operator"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-	NeonDefaultImage = "ghcr.io/neondatabase/neon:latest"
-)
-
 // makePageServerStatefulSet creates a StatefulSet for the Page Server component
-func makePageServerStatefulSet(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerProfile, spec *appsv1.StatefulSetSpec) (*appsv1.StatefulSet, error) {
+func makePageServerStatefulSet(ps *v1alpha1.PageServer, spec *appsv1.StatefulSetSpec) (*appsv1.StatefulSet, error) {
 
 	statefulSet := &appsv1.StatefulSet{
 		Spec: *spec,
@@ -43,10 +40,10 @@ func makePageServerStatefulSet(ps *v1alpha1.PageServer, psp *v1alpha1.PageServer
 	return statefulSet, nil
 }
 
-func makePageServerStatefulSetSpec(psp *v1alpha1.PageServerProfile) (*appsv1.StatefulSetSpec, error) {
+func makePageServerStatefulSetSpec(psName string, psp *v1alpha1.PageServerProfile) (*appsv1.StatefulSetSpec, error) {
 	cpf := psp.Spec.CommonFields
 
-	image := NeonDefaultImage
+	image := k8sutils.NeonDefaultImage
 	if cpf.Image != nil {
 		image = *cpf.Image
 	}
@@ -81,11 +78,35 @@ func makePageServerStatefulSetSpec(psp *v1alpha1.PageServerProfile) (*appsv1.Sta
 		}
 	}
 
+	// Add configMap volume mount for pageserver.toml
+	container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+		Name:      "config",
+		MountPath: "/data/.neon",
+	})
+
+	// Init container to generate identity.toml with pod name as id
+	initContainer := corev1.Container{
+		Name:  "identity-generator",
+		Image: image,
+		Command: []string{
+			"sh",
+			"-c",
+			"echo \"id=$(hostname)\" > /data/.neon/identity.toml",
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "config",
+				MountPath: "/data/.neon",
+			},
+		},
+	}
+
 	podTemplateSpec := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: labels,
 		},
 		Spec: corev1.PodSpec{
+			InitContainers:   []corev1.Container{initContainer},
 			Containers:       []corev1.Container{container},
 			ImagePullSecrets: cpf.ImagePullSecrets,
 			NodeSelector:     cpf.NodeSelector,
@@ -113,6 +134,18 @@ func makePageServerStatefulSetSpec(psp *v1alpha1.PageServerProfile) (*appsv1.Sta
 			})
 		}
 	}
+
+	// Add configMap volume for pageserver.toml
+	podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
+		Name: "config",
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: psName + "-config",
+				},
+			},
+		},
+	})
 
 	spec := appsv1.StatefulSetSpec{
 		Replicas: &replicas,

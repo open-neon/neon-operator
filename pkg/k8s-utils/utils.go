@@ -13,6 +13,7 @@ const (
 	OPERATOR_NAMESPACE = "OPERATOR_NAMESPACE"
 	// InputHashAnnotationKey is the annotation key for storing input hash
 	InputHashAnnotationKey = "neon.io/input-hash"
+	NeonDefaultImage       = "ghcr.io/neondatabase/neon:latest"
 )
 
 // GetOperatorNamespace returns the namespace where the operator is running.
