@@ -23,8 +23,8 @@ import (
 	"maps"
 	"strings"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -114,7 +114,7 @@ func (o *Operator) updateStatefulSet(ctx context.Context, ps *v1alpha1.PageServe
 		}
 	}
 
-	spec, err := makePageServerStatefulSetSpec(profile)
+	spec, err := makePageServerStatefulSetSpec(ps.GetName(), profile)
 	if err != nil {
 		return fmt.Errorf("failed to create pageserver statefulset spec: %w", err)
 	}
@@ -213,13 +213,12 @@ func generatePageServerToml(psp *v1alpha1.PageServerProfile) string {
 
 	// Control plane settings
 	sb.WriteString(fmt.Sprintf("control_plane_api = '%s'\n", "http://controller.default.svc.cluster.local:8080"))
-    sb.WriteString(fmt.Sprintf("control_plane_emergency_mode = '%s'\n", psp.Spec.ControlPlane.EmergencyMode))
+	sb.WriteString(fmt.Sprintf("control_plane_emergency_mode = '%s'\n", psp.Spec.ControlPlane.EmergencyMode))
 
 	// Network settings
 	sb.WriteString(fmt.Sprintf("listen_pg_addr = '%s'\n", "0.0.0.0:6400"))
 	sb.WriteString(fmt.Sprintf("http_listen_addr = '%s'\n", "0.0.0.0:9898"))
 
-	
 	// Durability settings
 	if psp.Spec.Durability != nil {
 		if psp.Spec.Durability.CheckpointDistance != "" {
@@ -267,4 +266,3 @@ func generatePageServerToml(psp *v1alpha1.PageServerProfile) string {
 
 	return sb.String()
 }
-

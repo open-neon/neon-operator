@@ -43,7 +43,7 @@ func makePageServerStatefulSet(ps *v1alpha1.PageServer, spec *appsv1.StatefulSet
 	return statefulSet, nil
 }
 
-func makePageServerStatefulSetSpec(psp *v1alpha1.PageServerProfile) (*appsv1.StatefulSetSpec, error) {
+func makePageServerStatefulSetSpec(psName string, psp *v1alpha1.PageServerProfile) (*appsv1.StatefulSetSpec, error) {
 	cpf := psp.Spec.CommonFields
 
 	image := NeonDefaultImage
@@ -81,6 +81,12 @@ func makePageServerStatefulSetSpec(psp *v1alpha1.PageServerProfile) (*appsv1.Sta
 		}
 	}
 
+	// Add configMap volume mount for pageserver.toml
+	container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+		Name:      "config",
+		MountPath: "/data/.neon",
+	})
+
 	podTemplateSpec := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: labels,
@@ -113,6 +119,18 @@ func makePageServerStatefulSetSpec(psp *v1alpha1.PageServerProfile) (*appsv1.Sta
 			})
 		}
 	}
+
+	// Add configMap volume for pageserver.toml
+	podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
+		Name: "config",
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: psName + "-config",
+				},
+			},
+		},
+	})
 
 	spec := appsv1.StatefulSetSpec{
 		Replicas: &replicas,
