@@ -29,7 +29,7 @@ const (
 )
 
 // makePageServerStatefulSet creates a StatefulSet for the Page Server component
-func makePageServerStatefulSet(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerProfile, spec *appsv1.StatefulSetSpec) (*appsv1.StatefulSet, error) {
+func makePageServerStatefulSet(ps *v1alpha1.PageServer, spec *appsv1.StatefulSetSpec) (*appsv1.StatefulSet, error) {
 
 	statefulSet := &appsv1.StatefulSet{
 		Spec: *spec,
