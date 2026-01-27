@@ -78,6 +78,11 @@ func makeStorageBrokerDeploymentSpec(sb *v1alpha1.StorageBroker, sbp *v1alpha1.S
 				ContainerPort: 50051,
 				Protocol:      corev1.ProtocolTCP,
 			},
+			{
+				Name:          "https",
+				ContainerPort: 50052,
+				Protocol:      corev1.ProtocolTCP,
+			},
 		},
 	}
 
