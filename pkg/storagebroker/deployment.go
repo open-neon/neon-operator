@@ -63,7 +63,7 @@ func makeStorageBrokerDeploymentSpec(sb *v1alpha1.StorageBroker, sbp *v1alpha1.S
 
 	// Build pod labels
 	labels := map[string]string{
-		"app":       "storagebroker",
+		"app":       sb.Name,
 		"component": "storagebroker-deployment",
 	}
 
