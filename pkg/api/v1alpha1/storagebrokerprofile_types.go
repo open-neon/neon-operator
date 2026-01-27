@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -25,6 +26,41 @@ const (
 	StorageBrokerProfileKey  = "storagebrokerprofile"
 	StorageBrokerProfileName = "storagebrokerprofiles"
 )
+
+// StorageBrokerConfigOptions defines optional configuration for the StorageBroker
+type StorageBrokerConfigOptions struct {
+	// timelineChanSize defines the size of the timeline channel buffer
+	// +kubebuilder:default=32
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	TimelineChanSize int32 `json:"timelineChanSize,omitempty"`
+
+	// allKeysChanSize defines the size of the all keys channel buffer
+	// +kubebuilder:default=16384
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	AllKeysChanSize int32 `json:"allKeysChanSize,omitempty"`
+
+	// http2KeepaliveInterval defines the HTTP/2 keepalive interval (e.g., "5000ms", "10s")
+	// +kubebuilder:default="5000ms"
+	// +optional
+	HTTP2KeepaliveInterval string `json:"http2KeepaliveInterval,omitempty"`
+
+	// logFormat defines the log format ("plain" or "json")
+	// +kubebuilder:default="plain"
+	// +kubebuilder:validation:Enum="plain";"json"
+	// +optional
+	LogFormat string `json:"logFormat,omitempty"`
+
+	// tlsSecretRef contains cert/key.
+	// +optional
+	TLSSecretRef *v1.SecretReference `json:"tlsSecretRef,omitempty"`
+
+	// sslCertReloadPeriod defines the SSL certificate reload period (e.g., "60s", "30s")
+	// +kubebuilder:default="60s"
+	// +optional
+	SSLCertReloadPeriod *string `json:"sslCertReloadPeriod,omitempty"`
+}
 
 // StorageBrokerProfileSpec defines the desired state of StorageBrokerProfile.
 // It will be deployed as a Deployment.
@@ -41,6 +77,8 @@ type StorageBrokerProfileSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +optional
 	MaxReplicas *int64 `json:"maxReplicas,omitempty"`
+
+	StorageBrokerConfigOptions `json:"inline"`
 }
 
 // +genclient

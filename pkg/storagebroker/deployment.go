@@ -71,7 +71,7 @@ func makeStorageBrokerDeploymentSpec(sb *v1alpha1.StorageBroker, sbp *v1alpha1.S
 		ImagePullPolicy: cpf.ImagePullPolicy,
 		Resources:       cpf.Resources,
 		Command:         []string{"storage_broker"},
-		Args:            []string{"--listen-addr=0.0.0.0:50051"},
+		Args:            []string{"--listen-addr=0.0.0.0:50051", "--listen-https-addr=0.0.0.0:50052"},
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "http",
