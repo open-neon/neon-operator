@@ -174,7 +174,7 @@ func (o *Operator) createPageServerConfigMap(ctx context.Context, ps *v1alpha1.P
 			return fmt.Errorf("failed to get pageserver configmap: %w", err)
 		}
 		// Create new configmap
-		tomlContent := generatePageServerToml(psp)
+		tomlContent := generatePageServerToml(ps, psp)
 		cm = &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      configMapName,
@@ -196,7 +196,7 @@ func (o *Operator) createPageServerConfigMap(ctx context.Context, ps *v1alpha1.P
 	}
 
 	// Update existing configmap
-	tomlContent := generatePageServerToml(psp)
+	tomlContent := generatePageServerToml(ps, psp)
 	cm.Data = map[string]string{
 		"pageserver.toml": tomlContent,
 	}
@@ -208,50 +208,36 @@ func (o *Operator) createPageServerConfigMap(ctx context.Context, ps *v1alpha1.P
 	return nil
 }
 
-func generatePageServerToml(psp *v1alpha1.PageServerProfile) string {
+func generatePageServerToml(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerProfile) string {
 	var sb strings.Builder
 
 	// Control plane settings
-	sb.WriteString(fmt.Sprintf("control_plane_api = '%s'\n", "http://controller.default.svc.cluster.local:8080"))
-	sb.WriteString(fmt.Sprintf("control_plane_emergency_mode = '%s'\n", psp.Spec.ControlPlane.EmergencyMode))
+	sb.WriteString(fmt.Sprintf("control_plane_api = '%s'\n", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", ps.Labels["neoncluster"], k8sutils.GetOperatorNamespace())))
+	sb.WriteString(fmt.Sprintf("control_plane_emergency_mode = '%t'\n", psp.Spec.ControlPlane.EmergencyMode))
 
+	neonClusterName := ps.Labels["neoncluster"]
+	sb.WriteString(fmt.Sprintf("broker_endpoint = '%s'\n", fmt.Sprintf("http://%s-broker:50051", neonClusterName)))
 	// Network settings
 	sb.WriteString(fmt.Sprintf("listen_pg_addr = '%s'\n", "0.0.0.0:6400"))
 	sb.WriteString(fmt.Sprintf("http_listen_addr = '%s'\n", "0.0.0.0:9898"))
 
-	// Durability settings
-	if psp.Spec.Durability.CheckpointDistance != "" {
-		sb.WriteString(fmt.Sprintf("checkpoint_distance = '%s'\n", psp.Spec.Durability.CheckpointDistance))
-	}
-	if psp.Spec.Durability.CheckpointTimeout != "" {
-		sb.WriteString(fmt.Sprintf("checkpoint_timeout = '%s'\n", psp.Spec.Durability.CheckpointTimeout))
-	}
+	sb.WriteString(fmt.Sprintf("checkpoint_distance = '%s'\n", psp.Spec.Durability.CheckpointDistance))
 
-	// Retention settings
-	if psp.Spec.Retention.HistoryRetention != "" {
-		sb.WriteString(fmt.Sprintf("gc_horizon = '%s'\n", psp.Spec.Retention.HistoryRetention))
-	}
-	if psp.Spec.Retention.GCInterval != "" {
-		sb.WriteString(fmt.Sprintf("gc_period = '%s'\n", psp.Spec.Retention.GCInterval))
-	}
-	if psp.Spec.Retention.PITRRetention != "" {
-		sb.WriteString(fmt.Sprintf("pitr_interval = '%s'\n", psp.Spec.Retention.PITRRetention))
-	}
+	sb.WriteString(fmt.Sprintf("checkpoint_timeout = '%s'\n", psp.Spec.Durability.CheckpointTimeout))
 
-	// Performance settings
-	if psp.Spec.Performance.IngestBatchSize != nil {
-		sb.WriteString(fmt.Sprintf("ingest_batch_size = %d\n", *psp.Spec.Performance.IngestBatchSize))
-	}
+	sb.WriteString(fmt.Sprintf("gc_horizon = '%s'\n", psp.Spec.Retention.HistoryRetention))
+
+	sb.WriteString(fmt.Sprintf("gc_period = '%s'\n", psp.Spec.Retention.GCInterval))
+
+	sb.WriteString(fmt.Sprintf("pitr_interval = '%s'\n", psp.Spec.Retention.PITRRetention))
+
+	sb.WriteString(fmt.Sprintf("ingest_batch_size = %d\n", *psp.Spec.Performance.IngestBatchSize))
+
 	sb.WriteString(fmt.Sprintf("virtual_file_io_mode = %s\n", psp.Spec.Performance.IOMode))
 
-	if psp.Spec.Security.AuthType != "" {
-		sb.WriteString(fmt.Sprintf("# auth_type = '%s'\n", psp.Spec.Security.AuthType))
-	}
+	sb.WriteString(fmt.Sprintf("# auth_type = '%s'\n", psp.Spec.Security.AuthType))
 
-	// Observability settings
-	if psp.Spec.Observability.LogLevel != "" {
-		sb.WriteString(fmt.Sprintf("log_level = '%s'\n", strings.ToLower(psp.Spec.Observability.LogLevel)))
-	}
+	sb.WriteString(fmt.Sprintf("log_level = '%s'\n", strings.ToLower(psp.Spec.Observability.LogLevel)))
 
 	return sb.String()
 }

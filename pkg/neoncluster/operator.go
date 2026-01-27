@@ -107,10 +107,11 @@ func (r *Operator) sync(ctx context.Context, name, namespace string) error {
 }
 
 func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluster, profile *v1alpha1.PageServerProfile, logger *slog.Logger) error {
+	psName := nc.Name + "-pageserver"
 
 	ps := &v1alpha1.PageServer{}
 	err := r.nclient.Get(ctx, client.ObjectKey{
-		Name:      nc.Name,
+		Name:      psName,
 		Namespace: nc.Namespace,
 	}, ps)
 
@@ -134,7 +135,7 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 	if notFound {
 		ps = &v1alpha1.PageServer{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      nc.Name,
+				Name:      psName,
 				Namespace: nc.Namespace,
 			},
 			Spec: v1alpha1.PageServerSpec{
@@ -181,7 +182,7 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 }
 
 func (r *Operator) updateSafeKeeper(ctx context.Context, nc *v1alpha1.NeonCluster, profile *v1alpha1.SafeKeeperProfile, logger *slog.Logger) error {
-	skname := nc.Name
+	skname := nc.Name + "-safekeeper"
 
 	sk := &v1alpha1.SafeKeeper{}
 	err := r.nclient.Get(ctx, client.ObjectKey{
@@ -254,7 +255,7 @@ func (r *Operator) updateSafeKeeper(ctx context.Context, nc *v1alpha1.NeonCluste
 }
 
 func (r *Operator) updateStorageBroker(ctx context.Context, nc *v1alpha1.NeonCluster, profile *v1alpha1.StorageBrokerProfile, logger *slog.Logger) error {
-	sbname := nc.Name
+	sbname := nc.Name + "-broker"
 
 	sb := &v1alpha1.StorageBroker{}
 	err := r.nclient.Get(ctx, client.ObjectKey{
