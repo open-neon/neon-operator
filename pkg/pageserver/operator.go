@@ -220,48 +220,37 @@ func generatePageServerToml(psp *v1alpha1.PageServerProfile) string {
 	sb.WriteString(fmt.Sprintf("http_listen_addr = '%s'\n", "0.0.0.0:9898"))
 
 	// Durability settings
-	if psp.Spec.Durability != nil {
-		if psp.Spec.Durability.CheckpointDistance != "" {
-			sb.WriteString(fmt.Sprintf("checkpoint_distance = '%s'\n", psp.Spec.Durability.CheckpointDistance))
-		}
-		if psp.Spec.Durability.CheckpointTimeout != "" {
-			sb.WriteString(fmt.Sprintf("checkpoint_timeout = '%s'\n", psp.Spec.Durability.CheckpointTimeout))
-		}
+	if psp.Spec.Durability.CheckpointDistance != "" {
+		sb.WriteString(fmt.Sprintf("checkpoint_distance = '%s'\n", psp.Spec.Durability.CheckpointDistance))
+	}
+	if psp.Spec.Durability.CheckpointTimeout != "" {
+		sb.WriteString(fmt.Sprintf("checkpoint_timeout = '%s'\n", psp.Spec.Durability.CheckpointTimeout))
 	}
 
 	// Retention settings
-	if psp.Spec.Retention != nil {
-		if psp.Spec.Retention.HistoryRetention != "" {
-			sb.WriteString(fmt.Sprintf("gc_horizon = '%s'\n", psp.Spec.Retention.HistoryRetention))
-		}
-		if psp.Spec.Retention.GCInterval != "" {
-			sb.WriteString(fmt.Sprintf("gc_period = '%s'\n", psp.Spec.Retention.GCInterval))
-		}
-		if psp.Spec.Retention.PITRRetention != "" {
-			sb.WriteString(fmt.Sprintf("pitr_interval = '%s'\n", psp.Spec.Retention.PITRRetention))
-		}
+	if psp.Spec.Retention.HistoryRetention != "" {
+		sb.WriteString(fmt.Sprintf("gc_horizon = '%s'\n", psp.Spec.Retention.HistoryRetention))
+	}
+	if psp.Spec.Retention.GCInterval != "" {
+		sb.WriteString(fmt.Sprintf("gc_period = '%s'\n", psp.Spec.Retention.GCInterval))
+	}
+	if psp.Spec.Retention.PITRRetention != "" {
+		sb.WriteString(fmt.Sprintf("pitr_interval = '%s'\n", psp.Spec.Retention.PITRRetention))
 	}
 
 	// Performance settings
-	if psp.Spec.Performance != nil {
-		if psp.Spec.Performance.IngestBatchSize != nil {
-			sb.WriteString(fmt.Sprintf("ingest_batch_size = %d\n", *psp.Spec.Performance.IngestBatchSize))
-		}
-		sb.WriteString(fmt.Sprintf("virtual_file_io_mode = %s\n", psp.Spec.Performance.IOMode))
+	if psp.Spec.Performance.IngestBatchSize != nil {
+		sb.WriteString(fmt.Sprintf("ingest_batch_size = %d\n", *psp.Spec.Performance.IngestBatchSize))
 	}
+	sb.WriteString(fmt.Sprintf("virtual_file_io_mode = %s\n", psp.Spec.Performance.IOMode))
 
-	// Security settings
-	if psp.Spec.Security != nil {
-		if psp.Spec.Security.AuthType != "" {
-			sb.WriteString(fmt.Sprintf("# auth_type = '%s'\n", psp.Spec.Security.AuthType))
-		}
+	if psp.Spec.Security.AuthType != "" {
+		sb.WriteString(fmt.Sprintf("# auth_type = '%s'\n", psp.Spec.Security.AuthType))
 	}
 
 	// Observability settings
-	if psp.Spec.Observability != nil {
-		if psp.Spec.Observability.LogLevel != "" {
-			sb.WriteString(fmt.Sprintf("log_level = '%s'\n", strings.ToLower(psp.Spec.Observability.LogLevel)))
-		}
+	if psp.Spec.Observability.LogLevel != "" {
+		sb.WriteString(fmt.Sprintf("log_level = '%s'\n", strings.ToLower(psp.Spec.Observability.LogLevel)))
 	}
 
 	return sb.String()

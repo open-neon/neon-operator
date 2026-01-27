@@ -38,31 +38,27 @@ type PageServerProfileSpec struct {
 
 	// controlPlane configures controller connectivity.
 	// +optional
-	ControlPlane *ControlPlaneSpec `json:"controlPlane,omitempty"`
+	ControlPlane ControlPlaneSpec `json:"controlPlane,omitempty"`
 
 	// durability controls checkpointing & WAL safety.
 	// +optional
-	Durability *DurabilitySpec `json:"durability,omitempty"`
+	Durability DurabilitySpec `json:"durability,omitempty"`
 
 	// retention controls GC, PITR, and history.
 	// +optional
-	Retention *RetentionSpec `json:"retention,omitempty"`
+	Retention RetentionSpec `json:"retention,omitempty"`
 
 	// performance controls IO & ingestion tuning.
 	// +optional
-	Performance *PerformanceSpec `json:"performance,omitempty"`
+	Performance PerformanceSpec `json:"performance,omitempty"`
 
 	// security controls auth and TLS.
 	// +optional
-	Security *SecuritySpec `json:"security,omitempty"`
+	Security SecuritySpec `json:"security,omitempty"`
 
 	// observability controls logs, metrics, tracing.
 	// +optional
-	Observability *ObservabilitySpec `json:"observability,omitempty"`
-
-	// advanced allows expert-only overrides.
-	// +optional
-	Advanced *AdvancedSpec `json:"advanced,omitempty"`
+	Observability ObservabilitySpec `json:"observability,omitempty"`
 
 	CommonFields `json:",inline"`
 
@@ -167,12 +163,6 @@ type ObservabilitySpec struct {
 	// metrics enables Prometheus metrics.
 	// +kubebuilder:default=true
 	Metrics bool `json:"metrics,omitempty"`
-}
-
-type AdvancedSpec struct {
-	// extraConfig injects raw TOML (expert use only).
-	// +optional
-	ExtraConfig string `json:"extraConfig,omitempty"`
 }
 
 // +genclient
