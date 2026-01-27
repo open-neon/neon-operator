@@ -70,6 +70,15 @@ func makeStorageBrokerDeploymentSpec(sb *v1alpha1.StorageBroker, sbp *v1alpha1.S
 		Image:           image,
 		ImagePullPolicy: cpf.ImagePullPolicy,
 		Resources:       cpf.Resources,
+		Command:         []string{"storage_broker"},
+		Args:            []string{"--listen-addr=0.0.0.0:50051"},
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "http",
+				ContainerPort: 50051,
+				Protocol:      corev1.ProtocolTCP,
+			},
+		},
 	}
 
 	podTemplateSpec := corev1.PodTemplateSpec{

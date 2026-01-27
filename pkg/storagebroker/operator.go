@@ -122,12 +122,12 @@ func (o *Operator) updateDeployment(ctx context.Context, sb *v1alpha1.StorageBro
 	}
 
 	if notFound {
-		if dep.Annotations == nil {
-			dep.Annotations = make(map[string]string)
+		if deployment.Annotations == nil {
+			deployment.Annotations = make(map[string]string)
 		}
-		dep.Annotations[k8sutils.InputHashAnnotationKey] = hash
+		deployment.Annotations[k8sutils.InputHashAnnotationKey] = hash
 
-		_, err = o.kclient.AppsV1().Deployments(sb.GetNamespace()).Create(ctx, dep, metav1.CreateOptions{})
+		_, err = o.kclient.AppsV1().Deployments(sb.GetNamespace()).Create(ctx, deployment, metav1.CreateOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to create storagebroker deployment: %w", err)
 		}
