@@ -142,6 +142,7 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 					Name:      profile.Name,
 					Namespace: profile.Namespace,
 				},
+				ObjectStorage: nc.Spec.ObjectStorage,
 			},
 		}
 
@@ -167,6 +168,7 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 		Name:      profile.Name,
 		Namespace: profile.Namespace,
 	}
+	ps.Spec.ObjectStorage = nc.Spec.ObjectStorage
 
 	err = r.nclient.Update(ctx, ps)
 	if err != nil {
