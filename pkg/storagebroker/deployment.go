@@ -17,6 +17,8 @@ limitations under the License.
 package storagebroker
 
 import (
+	"fmt"
+
 	"github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
 	"github.com/stateless-pg/stateless-pg/pkg/operator"
 	appsv1 "k8s.io/api/apps/v1"
@@ -65,13 +67,23 @@ func makeStorageBrokerDeploymentSpec(sb *v1alpha1.StorageBroker, sbp *v1alpha1.S
 		"component": "storagebroker-deployment",
 	}
 
+	// Build arguments from config defaults
+	args := []string{"--listen-addr=0.0.0.0:50051", "--listen-https-addr=0.0.0.0:50052"}
+	args = append(args, fmt.Sprintf("--timeline-chan-size=%d", sbp.Spec.TimelineChanSize))
+	args = append(args, fmt.Sprintf("--all-keys-chan-size=%d", sbp.Spec.AllKeysChanSize))
+	args = append(args, fmt.Sprintf("--http2-keepalive-interval=%s", sbp.Spec.HTTP2KeepaliveInterval))
+	args = append(args, fmt.Sprintf("--log-format=%s", sbp.Spec.LogFormat))
+	if sbp.Spec.SSLCertReloadPeriod != nil {
+		args = append(args, fmt.Sprintf("--ssl-cert-reload-period=%s", *sbp.Spec.SSLCertReloadPeriod))
+	}
+
 	container := corev1.Container{
 		Name:            "storagebroker",
 		Image:           image,
 		ImagePullPolicy: cpf.ImagePullPolicy,
 		Resources:       cpf.Resources,
 		Command:         []string{"storage_broker"},
-		Args:            []string{"--listen-addr=0.0.0.0:50051", "--listen-https-addr=0.0.0.0:50052"},
+		Args:            args,
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "http",
