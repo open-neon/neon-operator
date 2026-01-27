@@ -103,9 +103,6 @@ type PageServerProfileSpec struct {
 }
 
 type ControlPlaneSpec struct {
-	// endpoint is the control plane API URL.
-	Endpoint string `json:"endpoint"`
-
 	// emergencyMode disables controller dependency (dev/CI only).
 	// +kubebuilder:default=false
 	EmergencyMode bool `json:"emergencyMode,omitempty"`

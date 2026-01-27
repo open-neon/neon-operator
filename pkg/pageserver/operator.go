@@ -21,8 +21,10 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
+	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -90,6 +92,10 @@ func (o *Operator) sync(ctx context.Context, name, namespace string) error {
 
 	profile = profile.DeepCopy()
 
+	if err := o.createPageServerConfigMap(ctx, ps, profile); err != nil {
+		return fmt.Errorf("failed to create pageserver configmap: %w", err)
+	}
+
 	if err := o.updateStatefulSet(ctx, ps, profile); err != nil {
 		return fmt.Errorf("failed to reconcile pageserver statefulset: %w", err)
 	}
@@ -154,3 +160,111 @@ func (o *Operator) updateStatefulSet(ctx context.Context, ps *v1alpha1.PageServe
 
 	return nil
 }
+
+func (o *Operator) createPageServerConfigMap(ctx context.Context, ps *v1alpha1.PageServer, psp *v1alpha1.PageServerProfile) error {
+	configMapName := ps.GetName() + "-config"
+	namespace := ps.GetNamespace()
+
+	cm := &corev1.ConfigMap{}
+	if err := o.nclient.Get(ctx, client.ObjectKey{
+		Name:      configMapName,
+		Namespace: namespace,
+	}, cm); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get pageserver configmap: %w", err)
+		}
+		// Create new configmap
+		tomlContent := generatePageServerToml(psp)
+		cm = &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      configMapName,
+				Namespace: namespace,
+				Labels: map[string]string{
+					"app":       "pageserver",
+					"component": "pageserver-config",
+				},
+			},
+			Data: map[string]string{
+				"pageserver.toml": tomlContent,
+			},
+		}
+
+		if err := o.nclient.Create(ctx, cm); err != nil {
+			return fmt.Errorf("failed to create pageserver configmap: %w", err)
+		}
+		return nil
+	}
+
+	// Update existing configmap
+	tomlContent := generatePageServerToml(psp)
+	cm.Data = map[string]string{
+		"pageserver.toml": tomlContent,
+	}
+
+	if err := o.nclient.Update(ctx, cm); err != nil {
+		return fmt.Errorf("failed to update pageserver configmap: %w", err)
+	}
+
+	return nil
+}
+
+func generatePageServerToml(psp *v1alpha1.PageServerProfile) string {
+	var sb strings.Builder
+
+	// Control plane settings
+	sb.WriteString(fmt.Sprintf("control_plane_api = '%s'\n", "http://controller.default.svc.cluster.local:8080"))
+    sb.WriteString(fmt.Sprintf("control_plane_emergency_mode = '%s'\n", psp.Spec.ControlPlane.EmergencyMode))
+
+	// Network settings
+	sb.WriteString(fmt.Sprintf("listen_pg_addr = '%s'\n", "0.0.0.0:6400"))
+	sb.WriteString(fmt.Sprintf("http_listen_addr = '%s'\n", "0.0.0.0:9898"))
+
+	
+	// Durability settings
+	if psp.Spec.Durability != nil {
+		if psp.Spec.Durability.CheckpointDistance != "" {
+			sb.WriteString(fmt.Sprintf("checkpoint_distance = '%s'\n", psp.Spec.Durability.CheckpointDistance))
+		}
+		if psp.Spec.Durability.CheckpointTimeout != "" {
+			sb.WriteString(fmt.Sprintf("checkpoint_timeout = '%s'\n", psp.Spec.Durability.CheckpointTimeout))
+		}
+	}
+
+	// Retention settings
+	if psp.Spec.Retention != nil {
+		if psp.Spec.Retention.HistoryRetention != "" {
+			sb.WriteString(fmt.Sprintf("gc_horizon = '%s'\n", psp.Spec.Retention.HistoryRetention))
+		}
+		if psp.Spec.Retention.GCInterval != "" {
+			sb.WriteString(fmt.Sprintf("gc_period = '%s'\n", psp.Spec.Retention.GCInterval))
+		}
+		if psp.Spec.Retention.PITRRetention != "" {
+			sb.WriteString(fmt.Sprintf("pitr_interval = '%s'\n", psp.Spec.Retention.PITRRetention))
+		}
+	}
+
+	// Performance settings
+	if psp.Spec.Performance != nil {
+		if psp.Spec.Performance.IngestBatchSize != nil {
+			sb.WriteString(fmt.Sprintf("ingest_batch_size = %d\n", *psp.Spec.Performance.IngestBatchSize))
+		}
+		sb.WriteString(fmt.Sprintf("virtual_file_io_mode = %s\n", psp.Spec.Performance.IOMode))
+	}
+
+	// Security settings
+	if psp.Spec.Security != nil {
+		if psp.Spec.Security.AuthType != "" {
+			sb.WriteString(fmt.Sprintf("# auth_type = '%s'\n", psp.Spec.Security.AuthType))
+		}
+	}
+
+	// Observability settings
+	if psp.Spec.Observability != nil {
+		if psp.Spec.Observability.LogLevel != "" {
+			sb.WriteString(fmt.Sprintf("log_level = '%s'\n", strings.ToLower(psp.Spec.Observability.LogLevel)))
+		}
+	}
+
+	return sb.String()
+}
+
