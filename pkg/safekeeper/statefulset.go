@@ -32,7 +32,7 @@ const (
 )
 
 // buildSafeKeeperArgs builds the command-line arguments for the safekeeper process
-func buildSafeKeeperArgs(nodeID int32, opts *v1alpha1.SafeKeeperConfigOptions) []string {
+func buildSafeKeeperArgs(nodeID int32, sf *v1alpha1.SafeKeeper, opts *v1alpha1.SafeKeeperConfigOptions) []string {
 	args := []string{
 		fmt.Sprintf("--id=%d", nodeID),
 	}
@@ -40,6 +40,10 @@ func buildSafeKeeperArgs(nodeID int32, opts *v1alpha1.SafeKeeperConfigOptions) [
 	if opts == nil {
 		return args
 	}
+
+	args = append(args, fmt.Sprintf("--listen_pg=%s", "0.0.0.0:5432"))
+	args = append(args, fmt.Sprintf("--listen_http=%s", "0.0.0.0:9898"))
+	args = append(args, fmt.Sprintf("--broker_endpoint=http://%s-broker:50051", sf.Labels["neoncluster"]))
 
 	// Node & Cluster Configuration
 	args = append(args, fmt.Sprintf("--datadir=%s", opts.DataDir))
@@ -216,7 +220,7 @@ func makeSafeKeeperStatefulSet(sk *v1alpha1.SafeKeeper, skp *v1alpha1.SafeKeeper
 	return statefulSet, nil
 }
 
-func makeSafeKeeperStatefulSetSpec(skp *v1alpha1.SafeKeeperProfile) (*appsv1.StatefulSetSpec, error) {
+func makeSafeKeeperStatefulSetSpec(sk *v1alpha1.SafeKeeper, skp *v1alpha1.SafeKeeperProfile) (*appsv1.StatefulSetSpec, error) {
 	cpf := skp.Spec.CommonFields
 
 	image := NeonDefaultImage
@@ -269,7 +273,7 @@ func makeSafeKeeperStatefulSetSpec(skp *v1alpha1.SafeKeeperProfile) (*appsv1.Sta
 	// We use ordinal 0 as a base for the args spec; individual pods
 	// must override the --id argument with their actual ordinal
 	// This is typically handled by a wrapper script or init container
-	args := buildSafeKeeperArgs(0, &skp.Spec.SafeKeeperConfigOptions)
+	args := buildSafeKeeperArgs(0, sk, &skp.Spec.SafeKeeperConfigOptions)
 
 	container := corev1.Container{
 		Name:            "safekeeper",

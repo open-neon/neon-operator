@@ -108,7 +108,7 @@ func (o *Operator) updateStatefulSet(ctx context.Context, sk *v1alpha1.SafeKeepe
 		}
 	}
 
-	spec, err := makeSafeKeeperStatefulSetSpec(profile)
+	spec, err := makeSafeKeeperStatefulSetSpec(sk, profile)
 	if err != nil {
 		return fmt.Errorf("failed to create safekeeper statefulset spec: %w", err)
 	}
