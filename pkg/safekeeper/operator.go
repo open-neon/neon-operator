@@ -31,6 +31,7 @@ import (
 
 	v1alpha1 "github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
 	k8sutils "github.com/stateless-pg/stateless-pg/pkg/k8s-utils"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // Operator manages lifecycle for SafeKeeper resources.
@@ -89,6 +90,10 @@ func (o *Operator) sync(ctx context.Context, name, namespace string) error {
 	}
 
 	profile = profile.DeepCopy()
+
+	if err := o.updateHeadlessService(ctx, sk); err != nil {
+		return fmt.Errorf("failed to reconcile safekeeper headless service: %w", err)
+	}
 
 	if err := o.updateStatefulSet(ctx, sk, profile); err != nil {
 		return fmt.Errorf("failed to reconcile safekeeper statefulset: %w", err)
@@ -150,6 +155,58 @@ func (o *Operator) updateStatefulSet(ctx context.Context, sk *v1alpha1.SafeKeepe
 	_, err = o.kclient.AppsV1().StatefulSets(sk.GetNamespace()).Update(ctx, ss, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to update safekeeper statefulset: %w", err)
+	}
+
+	return nil
+}
+
+func (o *Operator) updateHeadlessService(ctx context.Context, sk *v1alpha1.SafeKeeper) error {
+	svc, err := o.kclient.CoreV1().Services(sk.GetNamespace()).Get(ctx, "safekeeper", metav1.GetOptions{})
+	notFound := false
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			notFound = true
+			svc = &corev1.Service{}
+		} else {
+			return fmt.Errorf("failed to get safekeeper service: %w", err)
+		}
+	}
+
+	newSvc := makeSafeKeeperHeadlessService(sk)
+	hash, err := k8sutils.CreateInputHash(sk.ObjectMeta, newSvc.Spec)
+	if err != nil {
+		return fmt.Errorf("failed to create input hash for safekeeper service: %w", err)
+	}
+
+	if notFound {
+		if newSvc.Annotations == nil {
+			newSvc.Annotations = make(map[string]string)
+		}
+		newSvc.Annotations[k8sutils.InputHashAnnotationKey] = hash
+
+		_, err = o.kclient.CoreV1().Services(sk.GetNamespace()).Create(ctx, newSvc, metav1.CreateOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to create safekeeper service: %w", err)
+		}
+		return nil
+	}
+
+	if svc.Annotations[k8sutils.InputHashAnnotationKey] == hash {
+		// No update needed
+		return nil
+	}
+
+	svc.Spec = newSvc.Spec
+	svc.Labels = newSvc.Labels
+	if svc.Annotations == nil {
+		svc.Annotations = make(map[string]string)
+	}
+	maps.Copy(svc.Annotations, newSvc.Annotations)
+	svc.Annotations[k8sutils.InputHashAnnotationKey] = hash
+
+	_, err = o.kclient.CoreV1().Services(sk.GetNamespace()).Update(ctx, svc, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update safekeeper service: %w", err)
 	}
 
 	return nil

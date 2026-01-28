@@ -389,3 +389,42 @@ echo "Pod: $POD_NAME, Ordinal: $ORDINAL" >&2`,
 
 	return &spec, nil
 }
+
+// makeSafeKeeperHeadlessService creates a headless service for the SafeKeeper StatefulSet
+func makeSafeKeeperHeadlessService(sk *v1alpha1.SafeKeeper) *corev1.Service {
+	service := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "safekeeper",
+			Namespace: sk.Namespace,
+			Labels: map[string]string{
+				"app":       "safekeeper",
+				"component": "safekeeper-service",
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			ClusterIP: "None", // Headless service
+			Selector: map[string]string{
+				"app": "safekeeper",
+			},
+			Ports: []corev1.ServicePort{
+				{
+					Name:     "pg",
+					Port:     5432,
+					Protocol: corev1.ProtocolTCP,
+				},
+				{
+					Name:     "http",
+					Port:     9898,
+					Protocol: corev1.ProtocolTCP,
+				},
+			},
+		},
+	}
+
+	operator.UpdateObject(service,
+		operator.WithLabels(sk.Labels),
+		operator.WithOwner(sk),
+	)
+
+	return service
+}
