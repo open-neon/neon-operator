@@ -20,6 +20,7 @@ import (
 	"context"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,6 +37,7 @@ const controllerName = "storagebroker-controller"
 // +kubebuilder:rbac:groups=core.stateless-pg.io,resources=storagebrokers/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core.stateless-pg.io,resources=storagebrokerprofiles,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -53,6 +55,7 @@ func (r *Operator) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1alpha1.StorageBroker{}).
 		Owns(&appsv1.Deployment{}).
+		Owns(&corev1.Service{}).
 		Watches(
 			&corev1alpha1.StorageBrokerProfile{},
 			handler.EnqueueRequestsFromMapFunc(r.mapStorageBrokerProfileToStorageBrokers),

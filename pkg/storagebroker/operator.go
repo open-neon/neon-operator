@@ -94,6 +94,10 @@ func (o *Operator) sync(ctx context.Context, name, namespace string) error {
 		return fmt.Errorf("failed to reconcile storagebroker deployment: %w", err)
 	}
 
+	if err := o.updateService(ctx, sb); err != nil {
+		return fmt.Errorf("failed to reconcile storagebroker service: %w", err)
+	}
+
 	return nil
 }
 
@@ -122,12 +126,12 @@ func (o *Operator) updateDeployment(ctx context.Context, sb *v1alpha1.StorageBro
 	}
 
 	if notFound {
-		if dep.Annotations == nil {
-			dep.Annotations = make(map[string]string)
+		if deployment.Annotations == nil {
+			deployment.Annotations = make(map[string]string)
 		}
-		dep.Annotations[k8sutils.InputHashAnnotationKey] = hash
+		deployment.Annotations[k8sutils.InputHashAnnotationKey] = hash
 
-		_, err = o.kclient.AppsV1().Deployments(sb.GetNamespace()).Create(ctx, dep, metav1.CreateOptions{})
+		_, err = o.kclient.AppsV1().Deployments(sb.GetNamespace()).Create(ctx, deployment, metav1.CreateOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to create storagebroker deployment: %w", err)
 		}
@@ -150,6 +154,61 @@ func (o *Operator) updateDeployment(ctx context.Context, sb *v1alpha1.StorageBro
 	_, err = o.kclient.AppsV1().Deployments(sb.GetNamespace()).Update(ctx, dep, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to update storagebroker deployment: %w", err)
+	}
+
+	return nil
+}
+
+func (o *Operator) updateService(ctx context.Context, sb *v1alpha1.StorageBroker) error {
+	svc, err := o.kclient.CoreV1().Services(sb.GetNamespace()).Get(ctx, sb.GetName(), metav1.GetOptions{})
+	notFound := false
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			notFound = true
+		} else {
+			return fmt.Errorf("failed to get storagebroker service: %w", err)
+		}
+	}
+
+	service, err := makeStorageBrokerService(sb)
+	if err != nil {
+		return fmt.Errorf("failed to create storagebroker service object: %w", err)
+	}
+
+	hash, err := k8sutils.CreateInputHash(sb.ObjectMeta, service.Spec)
+	if err != nil {
+		return fmt.Errorf("failed to create input hash for storagebroker service: %w", err)
+	}
+
+	if notFound {
+		if service.Annotations == nil {
+			service.Annotations = make(map[string]string)
+		}
+		service.Annotations[k8sutils.InputHashAnnotationKey] = hash
+
+		_, err = o.kclient.CoreV1().Services(sb.GetNamespace()).Create(ctx, service, metav1.CreateOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to create storagebroker service: %w", err)
+		}
+		return nil
+	}
+
+	if svc.Annotations[k8sutils.InputHashAnnotationKey] == hash {
+		// No update needed
+		return nil
+	}
+
+	svc.Spec = service.Spec
+	svc.Labels = service.Labels
+	if svc.Annotations == nil {
+		svc.Annotations = make(map[string]string)
+	}
+	maps.Copy(svc.Annotations, service.Annotations)
+	svc.Annotations[k8sutils.InputHashAnnotationKey] = hash
+
+	_, err = o.kclient.CoreV1().Services(sb.GetNamespace()).Update(ctx, svc, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update storagebroker service: %w", err)
 	}
 
 	return nil
