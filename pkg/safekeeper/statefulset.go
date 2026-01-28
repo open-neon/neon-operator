@@ -206,7 +206,7 @@ func buildSafeKeeperArgs(nodeID int32, sf *v1alpha1.SafeKeeper, opts *v1alpha1.S
 }
 
 // makeSafeKeeperStatefulSet creates a StatefulSet for the SafeKeeper component
-func makeSafeKeeperStatefulSet(sk *v1alpha1.SafeKeeper, skp *v1alpha1.SafeKeeperProfile, spec *appsv1.StatefulSetSpec) (*appsv1.StatefulSet, error) {
+func makeSafeKeeperStatefulSet(sk *v1alpha1.SafeKeeper,  spec *appsv1.StatefulSetSpec) (*appsv1.StatefulSet, error) {
 
 	statefulSet := &appsv1.StatefulSet{
 		Spec: *spec,
