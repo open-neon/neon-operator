@@ -60,10 +60,6 @@ func (r *Operator) SetupWithManager(mgr ctrl.Manager) error {
 			&corev1alpha1.StorageBrokerProfile{},
 			handler.EnqueueRequestsFromMapFunc(r.mapStorageBrokerProfileToStorageBrokers),
 		).
-		Watches(
-			&corev1.Service{},
-			handler.EnqueueRequestsFromMapFunc(r.mapServiceToStorageBroker),
-		).
 		Named("storagebroker").
 		Complete(r)
 }
@@ -98,28 +94,4 @@ func (r *Operator) mapStorageBrokerProfileToStorageBrokers(ctx context.Context, 
 	}
 
 	return requests
-}
-
-// mapServiceToStorageBroker maps a Service change to its owning StorageBroker.
-func (r *Operator) mapServiceToStorageBroker(ctx context.Context, obj client.Object) []reconcile.Request {
-	svc, ok := obj.(*corev1.Service)
-	if !ok {
-		return []reconcile.Request{}
-	}
-
-	// Check if the service has an owner reference pointing to a StorageBroker
-	for _, ownerRef := range svc.GetOwnerReferences() {
-		if ownerRef.Kind == corev1alpha1.StorageBrokerKind {
-			return []reconcile.Request{
-				{
-					NamespacedName: types.NamespacedName{
-						Name:      ownerRef.Name,
-						Namespace: svc.Namespace,
-					},
-				},
-			}
-		}
-	}
-
-	return []reconcile.Request{}
 }
