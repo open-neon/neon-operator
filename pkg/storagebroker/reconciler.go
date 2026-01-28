@@ -20,6 +20,7 @@ import (
 	"context"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,6 +37,7 @@ const controllerName = "storagebroker-controller"
 // +kubebuilder:rbac:groups=core.stateless-pg.io,resources=storagebrokers/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core.stateless-pg.io,resources=storagebrokerprofiles,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -53,9 +55,14 @@ func (r *Operator) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1alpha1.StorageBroker{}).
 		Owns(&appsv1.Deployment{}).
+		Owns(&corev1.Service{}).
 		Watches(
 			&corev1alpha1.StorageBrokerProfile{},
 			handler.EnqueueRequestsFromMapFunc(r.mapStorageBrokerProfileToStorageBrokers),
+		).
+		Watches(
+			&corev1.Service{},
+			handler.EnqueueRequestsFromMapFunc(r.mapServiceToStorageBroker),
 		).
 		Named("storagebroker").
 		Complete(r)
@@ -91,4 +98,28 @@ func (r *Operator) mapStorageBrokerProfileToStorageBrokers(ctx context.Context, 
 	}
 
 	return requests
+}
+
+// mapServiceToStorageBroker maps a Service change to its owning StorageBroker.
+func (r *Operator) mapServiceToStorageBroker(ctx context.Context, obj client.Object) []reconcile.Request {
+	svc, ok := obj.(*corev1.Service)
+	if !ok {
+		return []reconcile.Request{}
+	}
+
+	// Check if the service has an owner reference pointing to a StorageBroker
+	for _, ownerRef := range svc.GetOwnerReferences() {
+		if ownerRef.Kind == corev1alpha1.StorageBrokerKind {
+			return []reconcile.Request{
+				{
+					NamespacedName: types.NamespacedName{
+						Name:      ownerRef.Name,
+						Namespace: svc.Namespace,
+					},
+				},
+			}
+		}
+	}
+
+	return []reconcile.Request{}
 }

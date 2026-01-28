@@ -24,6 +24,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -120,4 +121,37 @@ func makeStorageBrokerDeploymentSpec(sb *v1alpha1.StorageBroker, sbp *v1alpha1.S
 	}
 
 	return &spec, nil
+}
+
+// makeStorageBrokerService creates a ClusterIP Service for the StorageBroker component
+func makeStorageBrokerService(sb *v1alpha1.StorageBroker) (*corev1.Service, error) {
+	service := &corev1.Service{
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeClusterIP,
+			Selector: map[string]string{
+				"app": sb.Name,
+			},
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "http",
+					Port:       50051,
+					TargetPort: intstr.FromInt(50051),
+					Protocol:   corev1.ProtocolTCP,
+				},
+				{
+					Name:       "https",
+					Port:       50052,
+					TargetPort: intstr.FromInt(50052),
+					Protocol:   corev1.ProtocolTCP,
+				},
+			},
+		},
+	}
+
+	operator.UpdateObject(service,
+		operator.WithLabels(sb.Labels),
+		operator.WithOwner(sb),
+	)
+
+	return service, nil
 }
