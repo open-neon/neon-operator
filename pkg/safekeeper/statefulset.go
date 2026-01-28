@@ -73,32 +73,28 @@ func buildSafeKeeperArgs(nodeID int32, sf *v1alpha1.SafeKeeper, opts *v1alpha1.S
 	}
 
 	// Remote Storage Configuration
-	if opts.RemoteStorageMaxConcurrentSyncs != nil || opts.RemoteStorageMaxSyncErrors != nil ||
-		opts.RemoteStorageBucketName != nil || opts.RemoteStorageBucketRegion != nil ||
-		opts.RemoteStorageConcurrencyLimit != nil {
-		var remoteStorageParts []string
-		remoteStorageParts = append(remoteStorageParts, "{")
-		if opts.RemoteStorageMaxConcurrentSyncs != nil {
-			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("max_concurrent_syncs = %d", *opts.RemoteStorageMaxConcurrentSyncs))
-		}
-		if opts.RemoteStorageMaxSyncErrors != nil {
-			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("max_sync_errors = %d", *opts.RemoteStorageMaxSyncErrors))
-		}
-		if opts.RemoteStorageBucketName != nil && *opts.RemoteStorageBucketName != "" {
-			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("bucket_name = \"%s\"", *opts.RemoteStorageBucketName))
-		}
-		if opts.RemoteStorageBucketRegion != nil && *opts.RemoteStorageBucketRegion != "" {
-			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("bucket_region = \"%s\"", *opts.RemoteStorageBucketRegion))
-		}
-		if opts.RemoteStorageConcurrencyLimit != nil {
-			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("concurrency_limit = %d", *opts.RemoteStorageConcurrencyLimit))
-		}
-		remoteStorageParts = append(remoteStorageParts, "}")
-		remoteStorageStr := strings.Join(remoteStorageParts, " ")
-		remoteStorageStr = strings.TrimSuffix(strings.TrimSuffix(remoteStorageStr, ", }"), ",} ")
-		remoteStorageStr = strings.Replace(remoteStorageStr, ", }", " }", 1)
-		args = append(args, fmt.Sprintf("--remote_storage=%s", remoteStorageStr))
+
+	var remoteStorageParts []string
+	remoteStorageParts = append(remoteStorageParts, "{")
+	if opts.RemoteStorageMaxConcurrentSyncs != nil {
+		remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("max_concurrent_syncs = %d", *opts.RemoteStorageMaxConcurrentSyncs))
 	}
+	if opts.RemoteStorageMaxSyncErrors != nil {
+		remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("max_sync_errors = %d", *opts.RemoteStorageMaxSyncErrors))
+	}
+
+	remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("bucket_name = \"%s\"", sf.Spec.ObjectStorage.Bucket))
+
+	remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("bucket_region = \"%s\"", sf.Spec.ObjectStorage.Region))
+
+	if sf.Spec.ObjectStorage.MaxConcurrentRequests != nil {
+		remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("concurrency_limit = %d", sf.Spec.ObjectStorage.MaxConcurrentRequests))
+	}
+	remoteStorageParts = append(remoteStorageParts, "}")
+	remoteStorageStr := strings.Join(remoteStorageParts, " ")
+	remoteStorageStr = strings.TrimSuffix(strings.TrimSuffix(remoteStorageStr, ", }"), ",} ")
+	remoteStorageStr = strings.Replace(remoteStorageStr, ", }", " }", 1)
+	args = append(args, fmt.Sprintf("--remote_storage=%s", remoteStorageStr))
 
 	// Authentication & Security
 	if opts.PgAuthPublicKeyPath != nil {
@@ -206,7 +202,7 @@ func buildSafeKeeperArgs(nodeID int32, sf *v1alpha1.SafeKeeper, opts *v1alpha1.S
 }
 
 // makeSafeKeeperStatefulSet creates a StatefulSet for the SafeKeeper component
-func makeSafeKeeperStatefulSet(sk *v1alpha1.SafeKeeper,  spec *appsv1.StatefulSetSpec) (*appsv1.StatefulSet, error) {
+func makeSafeKeeperStatefulSet(sk *v1alpha1.SafeKeeper, spec *appsv1.StatefulSetSpec) (*appsv1.StatefulSet, error) {
 
 	statefulSet := &appsv1.StatefulSet{
 		Spec: *spec,

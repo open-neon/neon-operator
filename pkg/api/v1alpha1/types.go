@@ -129,3 +129,39 @@ type CommonFields struct {
 	// +optional
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
 }
+
+// ObjectStorageSpec defines the configuration for object storage used by Neon components.
+// +k8s:openapi-gen=true
+type ObjectStorageSpec struct {
+	// provider defines the backend.
+	// +kubebuilder:validation:Enum=s3;gcs;azure;minio;local
+	Provider string `json:"provider"`
+
+	// endpoint is the URL of the object storage service
+	// +required
+	Endpoint string `json:"endpoint"`
+
+	// bucket is the name of the storage bucket
+	// +required
+	Bucket string `json:"bucket"`
+
+	// region specifies the storage region
+	// +required
+	Region string `json:"region"`
+
+	// credentialsSecret is a reference to a secret containing object storage credentials
+	// +optional
+	CredentialsSecret *v1.SecretReference `json:"credentialsSecret,omitempty"`
+
+	// prefix is the path prefix for all objects stored
+	// +optional
+	Prefix string `json:"prefix,omitempty"`
+
+	// maxConcurrentRequests defines the maximum number of concurrent requests to object storage
+	// +optional
+	MaxConcurrentRequests *int32 `json:"maxConcurrentRequests,omitempty"`
+
+	// extraConfig allows specifying additional configuration parameters as key-value pairs
+	// +optional
+	ExtraConfig map[string]string `json:"extraConfig,omitempty"`
+}

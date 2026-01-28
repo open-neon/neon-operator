@@ -98,18 +98,6 @@ type SafeKeeperConfigOptions struct {
 	// +optional
 	RemoteStorageMaxSyncErrors *int64 `json:"remoteStorageMaxSyncErrors,omitempty"`
 
-	// remoteStorageBucketName specifies the bucket name for remote storage
-	// +optional
-	RemoteStorageBucketName *string `json:"remoteStorageBucketName,omitempty"`
-
-	// remoteStorageBucketRegion specifies the bucket region for remote storage
-	// +optional
-	RemoteStorageBucketRegion *string `json:"remoteStorageBucketRegion,omitempty"`
-
-	// remoteStorageConcurrencyLimit specifies concurrency limit for remote storage
-	// +optional
-	RemoteStorageConcurrencyLimit *int64 `json:"remoteStorageConcurrencyLimit,omitempty"`
-
 	// Authentication & Security
 	// ========================
 
