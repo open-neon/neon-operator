@@ -17,6 +17,10 @@ limitations under the License.
 package safekeeper
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
 	"github.com/stateless-pg/stateless-pg/pkg/operator"
 	appsv1 "k8s.io/api/apps/v1"
@@ -27,6 +31,176 @@ import (
 const (
 	NeonDefaultImage = "ghcr.io/neondatabase/neon:latest"
 )
+
+// buildSafeKeeperArgs builds the command-line arguments for the safekeeper process
+func buildSafeKeeperArgs(nodeID int32, opts *v1alpha1.SafeKeeperConfigOptions) []string {
+	args := []string{
+		"--id", strconv.Itoa(int(nodeID)),
+	}
+
+	if opts == nil {
+		return args
+	}
+
+	// Node & Cluster Configuration
+	args = append(args, "--datadir", opts.DataDir)
+
+	if opts.AvailabilityZone != nil {
+		args = append(args, "--availability_zone", *opts.AvailabilityZone)
+	}
+
+	args = append(args, "--broker_keepalive_interval", opts.BrokerKeepaliveInterval)
+
+	args = append(args, "--heartbeat_timeout", opts.HeartbeatTimeout)
+
+	if opts.PeerRecovery {
+		args = append(args, "--peer_recovery", "true")
+	}
+
+	args = append(args, "--max_offloader_lag", strconv.FormatInt(opts.MaxOffloaderLag, 10))
+
+	args = append(args, "--max_reelect_offloader_lag_bytes", strconv.FormatInt(opts.MaxReelectOffloaderLagBytes, 10))
+
+	args = append(args, "--max_timeline_disk_usage_bytes", strconv.FormatInt(opts.MaxTimelineDiskUsageBytes, 10))
+
+	args = append(args, "--wal_backup_parallel_jobs", strconv.FormatInt(opts.WalBackupParallelJobs, 10))
+
+	if opts.DisableWalBackup {
+		args = append(args, "--disable_wal_backup", "true")
+	}
+
+	// Remote Storage Configuration
+	if opts.RemoteStorageMaxConcurrentSyncs != nil || opts.RemoteStorageMaxSyncErrors != nil ||
+		opts.RemoteStorageBucketName != nil || opts.RemoteStorageBucketRegion != nil ||
+		opts.RemoteStorageConcurrencyLimit != nil {
+		var remoteStorageParts []string
+		remoteStorageParts = append(remoteStorageParts, "{")
+		if opts.RemoteStorageMaxConcurrentSyncs != nil {
+			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("max_concurrent_syncs = %d,", *opts.RemoteStorageMaxConcurrentSyncs))
+		}
+		if opts.RemoteStorageMaxSyncErrors != nil {
+			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("max_sync_errors = %d,", *opts.RemoteStorageMaxSyncErrors))
+		}
+		if opts.RemoteStorageBucketName != nil && *opts.RemoteStorageBucketName != "" {
+			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("bucket_name = \"%s\",", *opts.RemoteStorageBucketName))
+		}
+		if opts.RemoteStorageBucketRegion != nil && *opts.RemoteStorageBucketRegion != "" {
+			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("bucket_region = \"%s\",", *opts.RemoteStorageBucketRegion))
+		}
+		if opts.RemoteStorageConcurrencyLimit != nil {
+			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("concurrency_limit = %d,", *opts.RemoteStorageConcurrencyLimit))
+		}
+		remoteStorageParts = append(remoteStorageParts, "}")
+		remoteStorageStr := strings.Join(remoteStorageParts, " ")
+		remoteStorageStr = strings.TrimSuffix(strings.TrimSuffix(remoteStorageStr, ", }"), ",} ")
+		remoteStorageStr = strings.Replace(remoteStorageStr, ", }", " }", 1)
+		args = append(args, "--remote_storage", remoteStorageStr)
+	}
+
+	// Authentication & Security
+	if opts.PgAuthPublicKeyPath != nil {
+		args = append(args, "--pg_auth_public_key_path", *opts.PgAuthPublicKeyPath)
+	}
+	if opts.PgTenantOnlyAuthPublicKeyPath != nil {
+		args = append(args, "--pg_tenant_only_auth_public_key_path", *opts.PgTenantOnlyAuthPublicKeyPath)
+	}
+	if opts.HttpAuthPublicKeyPath != nil {
+		args = append(args, "--http_auth_public_key_path", *opts.HttpAuthPublicKeyPath)
+	}
+	if opts.AuthTokenPath != nil {
+		args = append(args, "--auth_token_path", *opts.AuthTokenPath)
+	}
+	if opts.SslKeyFile != nil {
+		args = append(args, "--ssl_key_file", *opts.SslKeyFile)
+	}
+	if opts.SslCertFile != nil {
+		args = append(args, "--ssl_cert_file", *opts.SslCertFile)
+	}
+	if opts.SslCertReloadPeriod != nil {
+		args = append(args, "--ssl_cert_reload_period", *opts.SslCertReloadPeriod)
+	}
+	if opts.SslCaFile != nil {
+		args = append(args, "--ssl_ca_file", *opts.SslCaFile)
+	}
+	if opts.UseHttpsSafekeeperApi {
+		args = append(args, "--use_https_safekeeper_api", "true")
+	}
+	if opts.EnableTlsWalServiceApi {
+		args = append(args, "--enable_tls_wal_service_api", "true")
+	}
+
+	// Safety & Reliability
+	if opts.NoSync {
+		args = append(args, "--no_sync", "true")
+	}
+	if opts.PeerRecoveryEnabled {
+		args = append(args, "--peer_recovery", "true")
+	}
+	if opts.EnableOffload {
+		args = append(args, "--enable_offload", "true")
+	}
+	if opts.DeleteOffloadedWal {
+		args = append(args, "--delete_offloaded_wal", "true")
+	}
+
+	args = append(args, "--partial_backup_timeout", opts.PartialBackupTimeout)
+
+	args = append(args, "--partial_backup_concurrency", strconv.FormatInt(opts.PartialBackupConcurrency, 10))
+
+	args = append(args, "--control_file_save_interval", opts.ControlFileSaveInterval)
+
+	args = append(args, "--eviction_min_resident", opts.EvictionMinResident)
+
+	if opts.DisablePeriodicBrokerPush {
+		args = append(args, "--disable_periodic_broker_push", "true")
+	}
+
+	// Performance & Monitoring
+
+	args = append(args, "--log_format", opts.LogFormat)
+
+	if !opts.ForceMetricCollectionOnScrape {
+		args = append(args, "--force_metric_collection_on_scrape", "false")
+	}
+
+	// Concurrency & Sharding
+	if opts.WalReaderFanout {
+		args = append(args, "--wal_reader_fanout", "true")
+	}
+	if opts.MaxDeltaForFanout != nil {
+		args = append(args, "--max_delta_for_fanout", strconv.FormatInt(*opts.MaxDeltaForFanout, 10))
+	}
+	if opts.CurrentThreadRuntime {
+		args = append(args, "--current_thread_runtime", "true")
+	}
+	if opts.WalsendersKeepHorizon {
+		args = append(args, "--walsenders_keep_horizon", "true")
+	}
+
+	// Disk Management
+
+	args = append(args, "--global_disk_check_interval", opts.GlobalDiskCheckInterval)
+
+	args = append(args, "--max_global_disk_usage_ratio", fmt.Sprintf("%f", opts.MaxGlobalDiskUsageRatio))
+
+	// Development & Debugging
+	if opts.Dev {
+		args = append(args, "--dev", "true")
+	}
+	if opts.EnablePullTimelineOnStartup {
+		args = append(args, "--enable_pull_timeline_on_startup", "true")
+	}
+
+	// Additional listen endpoints
+	if opts.ListenPgTenantOnly != nil {
+		args = append(args, "--listen_pg_tenant_only", *opts.ListenPgTenantOnly)
+	}
+	if opts.AdvertisePg != nil {
+		args = append(args, "--advertise_pg", *opts.AdvertisePg)
+	}
+
+	return args
+}
 
 // makeSafeKeeperStatefulSet creates a StatefulSet for the SafeKeeper component
 func makeSafeKeeperStatefulSet(sk *v1alpha1.SafeKeeper, skp *v1alpha1.SafeKeeperProfile, spec *appsv1.StatefulSetSpec) (*appsv1.StatefulSet, error) {
@@ -63,12 +237,49 @@ func makeSafeKeeperStatefulSetSpec(skp *v1alpha1.SafeKeeperProfile) (*appsv1.Sta
 		"component": "safekeeper-statefulset",
 	}
 
+	// Environment variables for pod identity and configuration
+	env := []corev1.EnvVar{
+		{
+			Name: "POD_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		},
+		{
+			Name: "POD_NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		},
+		{
+			Name: "HOSTNAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "spec.hostname",
+				},
+			},
+		},
+	}
+
+	// Note: For StatefulSet, each pod's nodeID is derived from its ordinal
+	// (e.g., pod name "safekeeper-0" gets ID 0, "safekeeper-1" gets ID 1)
+	// We use ordinal 0 as a base for the args spec; individual pods
+	// must override the --id argument with their actual ordinal
+	// This is typically handled by a wrapper script or init container
+	args := buildSafeKeeperArgs(0, &skp.Spec.SafeKeeperConfigOptions)
+
 	container := corev1.Container{
 		Name:            "safekeeper",
 		Image:           image,
 		ImagePullPolicy: cpf.ImagePullPolicy,
 		Resources:       cpf.Resources,
 		VolumeMounts:    skp.Spec.VolumeMounts,
+		Args:            args,
+		Env:             env,
 	}
 
 	// Add storage volume mount if storage is specified
@@ -81,11 +292,45 @@ func makeSafeKeeperStatefulSetSpec(skp *v1alpha1.SafeKeeperProfile) (*appsv1.Sta
 		}
 	}
 
+	// Init container to extract pod ordinal and configure node ID
+	initContainers := []corev1.Container{
+		{
+			Name:  "safekeeper-init",
+			Image: image,
+			Command: []string{
+				"sh",
+				"-c",
+				`# Extract ordinal from pod name (format: <name>-<ordinal>)
+POD_NAME=$(hostname)
+ORDINAL=${POD_NAME##*-}
+
+# Validate that ordinal is a number
+if ! echo "$ORDINAL" | grep -qE '^[0-9]+$'; then
+  echo "Failed to extract ordinal from pod name: $POD_NAME"
+  exit 1
+fi
+
+echo "Pod: $POD_NAME, Ordinal: $ORDINAL" >&2`,
+			},
+			Env: []corev1.EnvVar{
+				{
+					Name: "POD_NAME",
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "metadata.name",
+						},
+					},
+				},
+			},
+		},
+	}
+
 	podTemplateSpec := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: labels,
 		},
 		Spec: corev1.PodSpec{
+			InitContainers:   initContainers,
 			Containers:       []corev1.Container{container},
 			ImagePullSecrets: cpf.ImagePullSecrets,
 			NodeSelector:     cpf.NodeSelector,
