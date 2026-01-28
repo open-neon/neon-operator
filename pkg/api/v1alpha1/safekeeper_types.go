@@ -39,6 +39,10 @@ type SafeKeeperSpec struct {
 	// +kubebuilder:validation:Minimum=3
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
+
+	// objectStorage defines the configuration for object storage used by safekeeper
+	// +required
+	ObjectStorage ObjectStorageSpec `json:"objectStorage"`
 }
 
 // SafeKeeperStatus defines the observed state of SafeKeeper.
