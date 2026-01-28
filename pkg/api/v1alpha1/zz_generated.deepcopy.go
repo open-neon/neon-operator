@@ -598,11 +598,6 @@ func (in *SafeKeeperConfigOptions) DeepCopyInto(out *SafeKeeperConfigOptions) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.AdvertisePg != nil {
-		in, out := &in.AdvertisePg, &out.AdvertisePg
-		*out = new(string)
-		**out = **in
-	}
 	if in.AvailabilityZone != nil {
 		in, out := &in.AvailabilityZone, &out.AvailabilityZone
 		*out = new(string)

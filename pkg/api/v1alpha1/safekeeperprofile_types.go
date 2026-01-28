@@ -30,11 +30,6 @@ type SafeKeeperConfigOptions struct {
 	// +optional
 	ListenPgTenantOnly *string `json:"listenPgTenantOnly,omitempty"`
 
-	// advertisePg specifies the advertised WAL endpoint (host:port format)
-	// If not set, listenPg is used
-	// +optional
-	AdvertisePg *string `json:"advertisePg,omitempty"`
-
 	// Node & Cluster Configuration
 	// ============================
 

@@ -43,6 +43,7 @@ func buildSafeKeeperArgs(nodeID int32, sf *v1alpha1.SafeKeeper, opts *v1alpha1.S
 
 	args = append(args, fmt.Sprintf("--listen_pg=%s", "0.0.0.0:5432"))
 	args = append(args, fmt.Sprintf("--listen_http=%s", "0.0.0.0:9898"))
+	args = append(args, fmt.Sprintf("--advertise_pg=%s", "$(HOSTNAME).safekeeper.$(POD_NAMESPACE).svc.cluster.local:5432"))
 	args = append(args, fmt.Sprintf("--broker_endpoint=http://%s-broker:50051", sf.Labels["neoncluster"]))
 
 	// Node & Cluster Configuration
@@ -194,9 +195,6 @@ func buildSafeKeeperArgs(nodeID int32, sf *v1alpha1.SafeKeeper, opts *v1alpha1.S
 	if opts.ListenPgTenantOnly != nil {
 		args = append(args, "--listen_pg_tenant_only", *opts.ListenPgTenantOnly)
 	}
-	if opts.AdvertisePg != nil {
-		args = append(args, "--advertise_pg", *opts.AdvertisePg)
-	}
 
 	return args
 }
@@ -279,6 +277,11 @@ func makeSafeKeeperStatefulSetSpec(sk *v1alpha1.SafeKeeper, skp *v1alpha1.SafeKe
 		VolumeMounts:    skp.Spec.VolumeMounts,
 		Args:            args,
 		Env:             env,
+		Command: []string{
+			"sh",
+			"-c",
+			`eval "set -- $(printf '%s\n' "$@" | sed "s|\$(HOSTNAME)|$HOSTNAME|g; s|\$(POD_NAMESPACE)|$POD_NAMESPACE|g")" && exec safekeeper "$@"`,
+		},
 	}
 
 	// Add storage volume mount if storage is specified
