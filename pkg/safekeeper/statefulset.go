@@ -18,7 +18,6 @@ package safekeeper
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
@@ -35,7 +34,7 @@ const (
 // buildSafeKeeperArgs builds the command-line arguments for the safekeeper process
 func buildSafeKeeperArgs(nodeID int32, opts *v1alpha1.SafeKeeperConfigOptions) []string {
 	args := []string{
-		"--id", strconv.Itoa(int(nodeID)),
+		fmt.Sprintf("--id=%d", nodeID),
 	}
 
 	if opts == nil {
@@ -43,30 +42,30 @@ func buildSafeKeeperArgs(nodeID int32, opts *v1alpha1.SafeKeeperConfigOptions) [
 	}
 
 	// Node & Cluster Configuration
-	args = append(args, "--datadir", opts.DataDir)
+	args = append(args, fmt.Sprintf("--datadir=%s", opts.DataDir))
 
 	if opts.AvailabilityZone != nil {
-		args = append(args, "--availability_zone", *opts.AvailabilityZone)
+		args = append(args, fmt.Sprintf("--availability_zone=%s", *opts.AvailabilityZone))
 	}
 
-	args = append(args, "--broker_keepalive_interval", opts.BrokerKeepaliveInterval)
+	args = append(args, fmt.Sprintf("--broker_keepalive_interval=%s", opts.BrokerKeepaliveInterval))
 
-	args = append(args, "--heartbeat_timeout", opts.HeartbeatTimeout)
+	args = append(args, fmt.Sprintf("--heartbeat_timeout=%s", opts.HeartbeatTimeout))
 
 	if opts.PeerRecovery {
-		args = append(args, "--peer_recovery", "true")
+		args = append(args, "--peer_recovery=true")
 	}
 
-	args = append(args, "--max_offloader_lag", strconv.FormatInt(opts.MaxOffloaderLag, 10))
+	args = append(args, fmt.Sprintf("--max_offloader_lag=%d", opts.MaxOffloaderLag))
 
-	args = append(args, "--max_reelect_offloader_lag_bytes", strconv.FormatInt(opts.MaxReelectOffloaderLagBytes, 10))
+	args = append(args, fmt.Sprintf("--max_reelect_offloader_lag_bytes=%d", opts.MaxReelectOffloaderLagBytes))
 
-	args = append(args, "--max_timeline_disk_usage_bytes", strconv.FormatInt(opts.MaxTimelineDiskUsageBytes, 10))
+	args = append(args, fmt.Sprintf("--max_timeline_disk_usage_bytes=%d", opts.MaxTimelineDiskUsageBytes))
 
-	args = append(args, "--wal_backup_parallel_jobs", strconv.FormatInt(opts.WalBackupParallelJobs, 10))
+	args = append(args, fmt.Sprintf("--wal_backup_parallel_jobs=%d", opts.WalBackupParallelJobs))
 
 	if opts.DisableWalBackup {
-		args = append(args, "--disable_wal_backup", "true")
+		args = append(args, "--disable_wal_backup=true")
 	}
 
 	// Remote Storage Configuration
@@ -76,112 +75,112 @@ func buildSafeKeeperArgs(nodeID int32, opts *v1alpha1.SafeKeeperConfigOptions) [
 		var remoteStorageParts []string
 		remoteStorageParts = append(remoteStorageParts, "{")
 		if opts.RemoteStorageMaxConcurrentSyncs != nil {
-			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("max_concurrent_syncs = %d,", *opts.RemoteStorageMaxConcurrentSyncs))
+			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("max_concurrent_syncs = %d", *opts.RemoteStorageMaxConcurrentSyncs))
 		}
 		if opts.RemoteStorageMaxSyncErrors != nil {
-			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("max_sync_errors = %d,", *opts.RemoteStorageMaxSyncErrors))
+			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("max_sync_errors = %d", *opts.RemoteStorageMaxSyncErrors))
 		}
 		if opts.RemoteStorageBucketName != nil && *opts.RemoteStorageBucketName != "" {
-			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("bucket_name = \"%s\",", *opts.RemoteStorageBucketName))
+			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("bucket_name = \"%s\"", *opts.RemoteStorageBucketName))
 		}
 		if opts.RemoteStorageBucketRegion != nil && *opts.RemoteStorageBucketRegion != "" {
-			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("bucket_region = \"%s\",", *opts.RemoteStorageBucketRegion))
+			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("bucket_region = \"%s\"", *opts.RemoteStorageBucketRegion))
 		}
 		if opts.RemoteStorageConcurrencyLimit != nil {
-			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("concurrency_limit = %d,", *opts.RemoteStorageConcurrencyLimit))
+			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("concurrency_limit = %d", *opts.RemoteStorageConcurrencyLimit))
 		}
 		remoteStorageParts = append(remoteStorageParts, "}")
 		remoteStorageStr := strings.Join(remoteStorageParts, " ")
 		remoteStorageStr = strings.TrimSuffix(strings.TrimSuffix(remoteStorageStr, ", }"), ",} ")
 		remoteStorageStr = strings.Replace(remoteStorageStr, ", }", " }", 1)
-		args = append(args, "--remote_storage", remoteStorageStr)
+		args = append(args, fmt.Sprintf("--remote_storage=%s", remoteStorageStr))
 	}
 
 	// Authentication & Security
 	if opts.PgAuthPublicKeyPath != nil {
-		args = append(args, "--pg_auth_public_key_path", *opts.PgAuthPublicKeyPath)
+		args = append(args, fmt.Sprintf("--pg_auth_public_key_path=%s", *opts.PgAuthPublicKeyPath))
 	}
 	if opts.PgTenantOnlyAuthPublicKeyPath != nil {
-		args = append(args, "--pg_tenant_only_auth_public_key_path", *opts.PgTenantOnlyAuthPublicKeyPath)
+		args = append(args, fmt.Sprintf("--pg_tenant_only_auth_public_key_path=%s", *opts.PgTenantOnlyAuthPublicKeyPath))
 	}
 	if opts.HttpAuthPublicKeyPath != nil {
-		args = append(args, "--http_auth_public_key_path", *opts.HttpAuthPublicKeyPath)
+		args = append(args, fmt.Sprintf("--http_auth_public_key_path=%s", *opts.HttpAuthPublicKeyPath))
 	}
 	if opts.AuthTokenPath != nil {
-		args = append(args, "--auth_token_path", *opts.AuthTokenPath)
+		args = append(args, fmt.Sprintf("--auth_token_path=%s", *opts.AuthTokenPath))
 	}
 	if opts.SslKeyFile != nil {
-		args = append(args, "--ssl_key_file", *opts.SslKeyFile)
+		args = append(args, fmt.Sprintf("--ssl_key_file=%s", *opts.SslKeyFile))
 	}
 	if opts.SslCertFile != nil {
-		args = append(args, "--ssl_cert_file", *opts.SslCertFile)
+		args = append(args, fmt.Sprintf("--ssl_cert_file=%s", *opts.SslCertFile))
 	}
 	if opts.SslCertReloadPeriod != nil {
-		args = append(args, "--ssl_cert_reload_period", *opts.SslCertReloadPeriod)
+		args = append(args, fmt.Sprintf("--ssl_cert_reload_period=%s", *opts.SslCertReloadPeriod))
 	}
 	if opts.SslCaFile != nil {
-		args = append(args, "--ssl_ca_file", *opts.SslCaFile)
+		args = append(args, fmt.Sprintf("--ssl_ca_file=%s", *opts.SslCaFile))
 	}
 	if opts.UseHttpsSafekeeperApi {
-		args = append(args, "--use_https_safekeeper_api", "true")
+		args = append(args, "--use_https_safekeeper_api=true")
 	}
 	if opts.EnableTlsWalServiceApi {
-		args = append(args, "--enable_tls_wal_service_api", "true")
+		args = append(args, "--enable_tls_wal_service_api=true")
 	}
 
 	// Safety & Reliability
 	if opts.NoSync {
-		args = append(args, "--no_sync", "true")
+		args = append(args, "--no_sync=true")
 	}
 	if opts.PeerRecoveryEnabled {
-		args = append(args, "--peer_recovery", "true")
+		args = append(args, "--peer_recovery=true")
 	}
 	if opts.EnableOffload {
-		args = append(args, "--enable_offload", "true")
+		args = append(args, "--enable_offload=true")
 	}
 	if opts.DeleteOffloadedWal {
-		args = append(args, "--delete_offloaded_wal", "true")
+		args = append(args, "--delete_offloaded_wal=true")
 	}
 
-	args = append(args, "--partial_backup_timeout", opts.PartialBackupTimeout)
+	args = append(args, fmt.Sprintf("--partial_backup_timeout=%s", opts.PartialBackupTimeout))
 
-	args = append(args, "--partial_backup_concurrency", strconv.FormatInt(opts.PartialBackupConcurrency, 10))
+	args = append(args, fmt.Sprintf("--partial_backup_concurrency=%d", opts.PartialBackupConcurrency))
 
-	args = append(args, "--control_file_save_interval", opts.ControlFileSaveInterval)
+	args = append(args, fmt.Sprintf("--control_file_save_interval=%s", opts.ControlFileSaveInterval))
 
-	args = append(args, "--eviction_min_resident", opts.EvictionMinResident)
+	args = append(args, fmt.Sprintf("--eviction_min_resident=%s", opts.EvictionMinResident))
 
 	if opts.DisablePeriodicBrokerPush {
-		args = append(args, "--disable_periodic_broker_push", "true")
+		args = append(args, "--disable_periodic_broker_push=true")
 	}
 
 	// Performance & Monitoring
 
-	args = append(args, "--log_format", opts.LogFormat)
+	args = append(args, fmt.Sprintf("--log_format=%s", opts.LogFormat))
 
 	if !opts.ForceMetricCollectionOnScrape {
-		args = append(args, "--force_metric_collection_on_scrape", "false")
+		args = append(args, "--force_metric_collection_on_scrape=false")
 	}
 
 	// Concurrency & Sharding
 	if opts.WalReaderFanout {
-		args = append(args, "--wal_reader_fanout", "true")
+		args = append(args, "--wal_reader_fanout=true")
 	}
 	if opts.MaxDeltaForFanout != nil {
-		args = append(args, "--max_delta_for_fanout", strconv.FormatInt(*opts.MaxDeltaForFanout, 10))
+		args = append(args, fmt.Sprintf("--max_delta_for_fanout=%d", *opts.MaxDeltaForFanout))
 	}
 	if opts.CurrentThreadRuntime {
-		args = append(args, "--current_thread_runtime", "true")
+		args = append(args, "--current_thread_runtime=true")
 	}
 	if opts.WalsendersKeepHorizon {
-		args = append(args, "--walsenders_keep_horizon", "true")
+		args = append(args, "--walsenders_keep_horizon=true")
 	}
 
 	// Disk Management
 
-	args = append(args, "--global_disk_check_interval", opts.GlobalDiskCheckInterval)
+	args = append(args, fmt.Sprintf("--global_disk_check_interval=%s", opts.GlobalDiskCheckInterval))
 
-	args = append(args, "--max_global_disk_usage_ratio", fmt.Sprintf("%f", opts.MaxGlobalDiskUsageRatio))
+	args = append(args, fmt.Sprintf("--max_global_disk_usage_ratio=%f", opts.MaxGlobalDiskUsageRatio))
 
 	// Development & Debugging
 	if opts.Dev {
