@@ -44,7 +44,7 @@ func buildSafeKeeperArgs(nodeID int32, sf *v1alpha1.SafeKeeper, opts *v1alpha1.S
 	args = append(args, fmt.Sprintf("--listen_pg=%s", "0.0.0.0:5432"))
 	args = append(args, fmt.Sprintf("--listen_http=%s", "0.0.0.0:9898"))
 	args = append(args, fmt.Sprintf("--advertise_pg=%s", "$(HOSTNAME).safekeeper.$(POD_NAMESPACE).svc.cluster.local:5432"))
-	args = append(args, fmt.Sprintf("--broker_endpoint=http://%s-broker:50051", sf.Labels["neoncluster"]))
+	args = append(args, fmt.Sprintf("--broker_endpoint=http://%s-broker.%s.svc.cluster.local:50051", sf.Labels["neoncluster"]))
 
 	// Node & Cluster Configuration
 	args = append(args, fmt.Sprintf("--datadir=%s", opts.DataDir))

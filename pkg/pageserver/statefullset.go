@@ -178,3 +178,42 @@ func makePageServerStatefulSetSpec(psName string, psp *v1alpha1.PageServerProfil
 
 	return &spec, nil
 }
+
+// makePageServerHeadlessService creates a headless service for the PageServer StatefulSet
+func makePageServerHeadlessService(ps *v1alpha1.PageServer) *corev1.Service {
+	service := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pageserver",
+			Namespace: ps.Namespace,
+			Labels: map[string]string{
+				"app":       "pageserver",
+				"component": "pageserver-service",
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			ClusterIP: "None", // Headless service
+			Selector: map[string]string{
+				"app": "pageserver",
+			},
+			Ports: []corev1.ServicePort{
+				{
+					Name:     "pg",
+					Port:     6400,
+					Protocol: corev1.ProtocolTCP,
+				},
+				{
+					Name:     "http",
+					Port:     9898,
+					Protocol: corev1.ProtocolTCP,
+				},
+			},
+		},
+	}
+
+	operator.UpdateObject(service,
+		operator.WithLabels(ps.Labels),
+		operator.WithOwner(ps),
+	)
+
+	return service
+}

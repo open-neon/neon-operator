@@ -92,6 +92,10 @@ func (o *Operator) sync(ctx context.Context, name, namespace string) error {
 
 	profile = profile.DeepCopy()
 
+	if err := o.updateHeadlessService(ctx, ps); err != nil {
+		return fmt.Errorf("failed to reconcile pageserver headless service: %w", err)
+	}
+
 	if err := o.createPageServerConfigMap(ctx, ps, profile); err != nil {
 		return fmt.Errorf("failed to create pageserver configmap: %w", err)
 	}
@@ -161,6 +165,58 @@ func (o *Operator) updateStatefulSet(ctx context.Context, ps *v1alpha1.PageServe
 	return nil
 }
 
+func (o *Operator) updateHeadlessService(ctx context.Context, ps *v1alpha1.PageServer) error {
+	svc, err := o.kclient.CoreV1().Services(ps.GetNamespace()).Get(ctx, "pageserver", metav1.GetOptions{})
+	notFound := false
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			notFound = true
+			svc = &corev1.Service{}
+		} else {
+			return fmt.Errorf("failed to get pageserver service: %w", err)
+		}
+	}
+
+	newSvc := makePageServerHeadlessService(ps)
+	hash, err := k8sutils.CreateInputHash(ps.ObjectMeta, newSvc.Spec)
+	if err != nil {
+		return fmt.Errorf("failed to create input hash for pageserver service: %w", err)
+	}
+
+	if notFound {
+		if newSvc.Annotations == nil {
+			newSvc.Annotations = make(map[string]string)
+		}
+		newSvc.Annotations[k8sutils.InputHashAnnotationKey] = hash
+
+		_, err = o.kclient.CoreV1().Services(ps.GetNamespace()).Create(ctx, newSvc, metav1.CreateOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to create pageserver service: %w", err)
+		}
+		return nil
+	}
+
+	if svc.Annotations[k8sutils.InputHashAnnotationKey] == hash {
+		// No update needed
+		return nil
+	}
+
+	svc.Spec = newSvc.Spec
+	svc.Labels = newSvc.Labels
+	if svc.Annotations == nil {
+		svc.Annotations = make(map[string]string)
+	}
+	maps.Copy(svc.Annotations, newSvc.Annotations)
+	svc.Annotations[k8sutils.InputHashAnnotationKey] = hash
+
+	_, err = o.kclient.CoreV1().Services(ps.GetNamespace()).Update(ctx, svc, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update pageserver service: %w", err)
+	}
+
+	return nil
+}
+
 func (o *Operator) createPageServerConfigMap(ctx context.Context, ps *v1alpha1.PageServer, psp *v1alpha1.PageServerProfile) error {
 	configMapName := ps.GetName() + "-config"
 	namespace := ps.GetNamespace()
@@ -216,7 +272,7 @@ func generatePageServerToml(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerPro
 	sb.WriteString(fmt.Sprintf("control_plane_emergency_mode = '%t'\n", psp.Spec.ControlPlane.EmergencyMode))
 
 	neonClusterName := ps.Labels["neoncluster"]
-	sb.WriteString(fmt.Sprintf("broker_endpoint = '%s'\n", fmt.Sprintf("http://%s-broker:50051", neonClusterName)))
+	sb.WriteString(fmt.Sprintf("broker_endpoint = '%s'\n", fmt.Sprintf("http://%s-broker.%s.svc.cluster.local:50051", neonClusterName, ps.GetNamespace())))
 	// Network settings
 	sb.WriteString(fmt.Sprintf("listen_pg_addr = '%s'\n", "0.0.0.0:6400"))
 	sb.WriteString(fmt.Sprintf("http_listen_addr = '%s'\n", "0.0.0.0:9898"))
