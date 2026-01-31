@@ -75,12 +75,18 @@ func NewControlPlaneServer(enableTLS bool, certPath, certKey string, logger *slo
 		// When TLSConfig.Certificates is set, ListenAndServeTLS will use these instead of loading from files
 		cert, err := tls.LoadX509KeyPair(certPath, certKey)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load TLS certificate: %w", err)
+			logger.Warn("failed to load TLS certificate, falling back to HTTP", "error", err)
+			// Disable TLS and use HTTP instead
+			EnableTLS = false
+			Protocol = "http"
+			Port = httpPort
+			cps.server.Addr = httpPort
+		} else {
+			cps.server.TLSConfig = &tls.Config{
+				Certificates: []tls.Certificate{cert},
+			}
+			logger.Info("TLS enabled for control plane server", "certPath", certPath)
 		}
-		cps.server.TLSConfig = &tls.Config{
-			Certificates: []tls.Certificate{cert},
-		}
-		logger.Info("TLS enabled for control plane server", "certPath", certPath)
 	}
 
 	return cps, nil
