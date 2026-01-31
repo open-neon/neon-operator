@@ -233,6 +233,11 @@ func makePageServerHeadlessService(ps *v1alpha1.PageServer) *corev1.Service {
 					Port:     9898,
 					Protocol: corev1.ProtocolTCP,
 				},
+				{
+					Name:     "https",
+					Port:     9899,
+					Protocol: corev1.ProtocolTCP,
+				},
 			},
 		},
 	}
