@@ -63,9 +63,6 @@ spec:
         args:
           - --leader-elect
           - --health-probe-bind-address=:8081
-          - --control-plane-enable-tls
-          - --control-plane-cert-path=/etc/control-plane-certs
-          - --control-plane-cert-key-path=/etc/control-plane-certs
         env:
         - name: OPERATOR_NAMESPACE
           valueFrom:
@@ -110,14 +107,7 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
-        volumeMounts:
-        - name: control-plane-certs
-          mountPath: /etc/control-plane-certs
-          readOnly: true
-      volumes:
-      - name: control-plane-certs
-        secret:
-          secretName: control-plane-certs
-          optional: true
+        volumeMounts: []
+      volumes: []
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
