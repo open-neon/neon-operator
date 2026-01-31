@@ -237,9 +237,9 @@ type SafeKeeperConfigOptions struct {
 	GlobalDiskCheckInterval string `json:"globalDiskCheckInterval,omitempty"`
 
 	// maxGlobalDiskUsageRatio portion of filesystem capacity for all timelines (0.0 = disabled)
-	// +kubebuilder:default=0.0
+	// +kubebuilder:default="0.0"
 	// +optional
-	MaxGlobalDiskUsageRatio float64 `json:"maxGlobalDiskUsageRatio,omitempty"`
+	MaxGlobalDiskUsageRatio string `json:"maxGlobalDiskUsageRatio,omitempty"`
 
 	// Development & Debugging
 	// =====================

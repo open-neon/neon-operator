@@ -23,6 +23,7 @@ type ControlPlaneServer struct {
 }
 
 const (
+	ServiceName = "control-plane"
 	controllerName = "control-plane"
 	httpPort       = ":9090"
 	httpsPort      = ":9443"

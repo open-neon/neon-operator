@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1alpha1 "github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	controlplane "github.com/stateless-pg/stateless-pg/pkg/control-plane"
 	k8sutils "github.com/stateless-pg/stateless-pg/pkg/k8s-utils"
 )
 
@@ -268,7 +269,7 @@ func generatePageServerToml(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerPro
 	var sb strings.Builder
 
 	// Control plane settings
-	sb.WriteString(fmt.Sprintf("control_plane_api = '%s'\n", fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", ps.Labels["neoncluster"], k8sutils.GetOperatorNamespace())))
+	sb.WriteString(fmt.Sprintf("control_plane_api = '%s'\n", fmt.Sprintf("%s://%s.%s.svc.cluster.local:%s", controlplane.GetProtocol(), controlplane.ServiceName, k8sutils.GetOperatorNamespace(), controlplane.GetPort())))
 	sb.WriteString(fmt.Sprintf("control_plane_emergency_mode = '%t'\n", psp.Spec.ControlPlane.EmergencyMode))
 
 	neonClusterName := ps.Labels["neoncluster"]

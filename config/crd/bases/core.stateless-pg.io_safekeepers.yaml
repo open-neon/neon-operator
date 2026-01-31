@@ -50,10 +50,62 @@ spec:
           spec:
             description: spec defines the desired state of SafeKeeper
             properties:
-              nodeId:
-                description: nodeId is the unique identifier for this SafeKeeper instance
-                format: int32
-                type: integer
+              objectStorage:
+                description: objectStorage defines the configuration for object storage
+                  used by safekeeper
+                properties:
+                  bucket:
+                    description: bucket is the name of the storage bucket
+                    type: string
+                  credentialsSecret:
+                    description: credentialsSecret is a reference to a secret containing
+                      object storage credentials
+                    properties:
+                      name:
+                        description: name is unique within a namespace to reference
+                          a secret resource.
+                        type: string
+                      namespace:
+                        description: namespace defines the space within which the
+                          secret name must be unique.
+                        type: string
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  endpoint:
+                    description: endpoint is the URL of the object storage service
+                    type: string
+                  extraConfig:
+                    additionalProperties:
+                      type: string
+                    description: extraConfig allows specifying additional configuration
+                      parameters as key-value pairs
+                    type: object
+                  maxConcurrentRequests:
+                    description: maxConcurrentRequests defines the maximum number
+                      of concurrent requests to object storage
+                    format: int32
+                    type: integer
+                  prefix:
+                    description: prefix is the path prefix for all objects stored
+                    type: string
+                  provider:
+                    description: provider defines the backend.
+                    enum:
+                    - s3
+                    - gcs
+                    - azure
+                    - minio
+                    - local
+                    type: string
+                  region:
+                    description: region specifies the storage region
+                    type: string
+                required:
+                - bucket
+                - endpoint
+                - provider
+                - region
+                type: object
               profileRef:
                 description: profileRef is a reference to the SafeKeeperProfile resource
                   to use
@@ -106,6 +158,7 @@ spec:
                 minimum: 3
                 type: integer
             required:
+            - objectStorage
             - profileRef
             type: object
           status:
