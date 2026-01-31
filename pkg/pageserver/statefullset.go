@@ -25,6 +25,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	tlsCertPath = "/etc/pageserver/certs/tls.crt"
+	tlsKeyPath  = "/etc/pageserver/certs/tls.key"
+	tlsVolumeName = "tls-certs"
+)
+
 // makePageServerStatefulSet creates a StatefulSet for the Page Server component
 func makePageServerStatefulSet(ps *v1alpha1.PageServer, spec *appsv1.StatefulSetSpec) (*appsv1.StatefulSet, error) {
 
@@ -83,6 +89,15 @@ func makePageServerStatefulSetSpec(psName string, psp *v1alpha1.PageServerProfil
 		Name:      "config",
 		MountPath: "/data/.neon",
 	})
+
+	// Add TLS secret volume mount if TLS is enabled
+	if psp.Spec.Security.EnableTLS && psp.Spec.Security.TLSSecretRef != nil {
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      tlsVolumeName,
+			MountPath: "/etc/pageserver/certs",
+			ReadOnly:  true,
+		})
+	}
 
 	// Init container to generate identity.toml with pod name as id
 	initContainer := corev1.Container{
@@ -146,6 +161,18 @@ func makePageServerStatefulSetSpec(psName string, psp *v1alpha1.PageServerProfil
 			},
 		},
 	})
+
+	// Add TLS secret volume if TLS is enabled
+	if psp.Spec.Security.EnableTLS && psp.Spec.Security.TLSSecretRef != nil {
+		podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
+			Name: tlsVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: psp.Spec.Security.TLSSecretRef.Name,
+				},
+			},
+		})
+	}
 
 	spec := appsv1.StatefulSetSpec{
 		Replicas: &replicas,
