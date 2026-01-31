@@ -1,0 +1,20 @@
+# Patch for Prometheus CR to enable secure TLS configuration
+# This patch adds TLS settings to secure the Prometheus UI/API endpoint
+# Prerequisites:
+# - A TLS secret named 'prometheus-tls-secret' must exist in the 'system' namespace
+# - The secret must contain 'tls.crt' and 'tls.key' keys
+metadata:
+  name: stateless-pg
+  namespace: system
+spec:
+  tls:
+    servers:
+      - name: https
+        key:
+          secret:
+            name: prometheus-tls-secret
+            key: tls.key
+        cert:
+          secret:
+            name: prometheus-tls-secret
+            key: tls.crt
