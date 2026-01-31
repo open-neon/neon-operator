@@ -152,7 +152,7 @@ func makePageServerStatefulSetSpec(psName string, psp *v1alpha1.PageServerProfil
 		Selector: &metav1.LabelSelector{
 			MatchLabels: labels,
 		},
-		ServiceName:                          "pageserver",
+		ServiceName:                          psName,
 		Template:                             podTemplateSpec,
 		PersistentVolumeClaimRetentionPolicy: psp.Spec.PersistentVolumeClaimRetentionPolicy,
 	}
@@ -183,7 +183,7 @@ func makePageServerStatefulSetSpec(psName string, psp *v1alpha1.PageServerProfil
 func makePageServerHeadlessService(ps *v1alpha1.PageServer) *corev1.Service {
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pageserver",
+			Name:      ps.GetName(),
 			Namespace: ps.Namespace,
 			Labels: map[string]string{
 				"app":       "pageserver",

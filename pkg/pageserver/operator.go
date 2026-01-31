@@ -167,7 +167,7 @@ func (o *Operator) updateStatefulSet(ctx context.Context, ps *v1alpha1.PageServe
 }
 
 func (o *Operator) updateHeadlessService(ctx context.Context, ps *v1alpha1.PageServer) error {
-	svc, err := o.kclient.CoreV1().Services(ps.GetNamespace()).Get(ctx, "pageserver", metav1.GetOptions{})
+	svc, err := o.kclient.CoreV1().Services(ps.GetNamespace()).Get(ctx, ps.GetName(), metav1.GetOptions{})
 	notFound := false
 	if err != nil {
 		if apierrors.IsNotFound(err) {
