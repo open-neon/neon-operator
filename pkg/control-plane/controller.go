@@ -23,10 +23,12 @@ type ControlPlaneServer struct {
 }
 
 const (
-	ServiceName    = "control-plane"
-	controllerName = "control-plane"
-	httpPort       = ":9090"
-	httpsPort      = ":9443"
+	ServiceName      = "control-plane"
+	controllerName   = "control-plane"
+	httpPort         = ":9090"
+	httpsPort        = ":9443"
+	certPath         = "/etc/control-plane/certs/tls.crt"
+	certKeyPath      = "/etc/control-plane/certs/tls.key"
 )
 
 var (
@@ -61,7 +63,7 @@ func setTLSConfig(enabled bool, proto, p string) {
 // The port is automatically selected based on enableTLS flag:
 // - :9090 for HTTP (when TLS is disabled)
 // - :9443 for HTTPS (when TLS is enabled)
-func NewControlPlaneServer(enableTLS bool, certPath, certKey string, logger *slog.Logger, nclient client.Client, config *rest.Config, scheme *runtime.Scheme) (*ControlPlaneServer, error) {
+func NewControlPlaneServer(enableTLS bool, logger *slog.Logger, nclient client.Client, config *rest.Config, scheme *runtime.Scheme) (*ControlPlaneServer, error) {
 	// Select port based on TLS setting
 	addr := httpPort
 	if enableTLS {
@@ -95,7 +97,7 @@ func NewControlPlaneServer(enableTLS bool, certPath, certKey string, logger *slo
 	if enableTLS {
 		// Load TLS certificate and configure in TLSConfig
 		// When TLSConfig.Certificates is set, ListenAndServeTLS will use these instead of loading from files
-		cert, err := tls.LoadX509KeyPair(certPath, certKey)
+		cert, err := tls.LoadX509KeyPair(certPath, certKeyPath)
 		if err != nil {
 			logger.Warn("failed to load TLS certificate, falling back to HTTP", "error", err)
 			// Disable TLS and use HTTP instead
