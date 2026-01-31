@@ -14,22 +14,24 @@ import (
 
 // ControlPlaneServer represents the control plane HTTP server
 type ControlPlaneServer struct {
-	mux       *http.ServeMux
-	logger    *slog.Logger
-	addr      string
-	enableTLS bool
-	certPath  string
-	certKey   string
-	server    *http.Server
-	nclient   client.Client
-	kclient   kubernetes.Interface
-	scheme    *runtime.Scheme
+	mux     *http.ServeMux
+	logger  *slog.Logger
+	server  *http.Server
+	nclient client.Client
+	kclient kubernetes.Interface
+	scheme  *runtime.Scheme
 }
 
 const (
-	controllerName     = "control-plane"
-	httpPort           = ":9090"
-	httpsPort          = ":9443"
+	controllerName = "control-plane"
+	httpPort       = ":9090"
+	httpsPort      = ":9443"
+)
+
+var (
+	EnableTLS = false
+	Protocol  = "http"
+	Port      = httpPort
 )
 
 // NewControlPlaneServer creates a new control plane server instance
@@ -40,7 +42,9 @@ func NewControlPlaneServer(enableTLS bool, certPath, certKey string, logger *slo
 	// Select port based on TLS setting
 	addr := httpPort
 	if enableTLS {
-		addr = httpsPort
+		Protocol = "https"
+		EnableTLS = true
+		Port = httpsPort
 	}
 	logger = logger.With("component", controllerName)
 
@@ -53,15 +57,11 @@ func NewControlPlaneServer(enableTLS bool, certPath, certKey string, logger *slo
 	mux := http.NewServeMux()
 
 	cps := &ControlPlaneServer{
-		mux:       mux,
-		logger:    logger,
-		addr:      addr,
-		enableTLS: enableTLS,
-		certPath:  certPath,
-		certKey:   certKey,
-		nclient:   nclient,
-		kclient:   kclient,
-		scheme:    scheme,
+		mux:     mux,
+		logger:  logger,
+		nclient: nclient,
+		kclient: kclient,
+		scheme:  scheme,
 	}
 
 	// Configure HTTP server
@@ -88,14 +88,10 @@ func NewControlPlaneServer(enableTLS bool, certPath, certKey string, logger *slo
 
 // Start starts the control plane server
 func (cps *ControlPlaneServer) Start() error {
-	protocol := "HTTP"
-	if cps.enableTLS {
-		protocol = "HTTPS"
-	}
 
-	cps.logger.Info("starting control plane server", "address", cps.addr, "protocol", protocol)
+	cps.logger.Info("starting control plane server", "address", Port, "protocol", Protocol)
 
-	if cps.enableTLS {
+	if EnableTLS {
 		return cps.server.ListenAndServeTLS("", "")
 	}
 	return cps.server.ListenAndServe()
