@@ -1,0 +1,50 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: stateless-pg
+  namespace: system
+  labels:
+    app.kubernetes.io/name: stateless-pg
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  replicas: 1
+
+  # Data retention
+  retention: 3h
+
+  # Select ServiceMonitors with label "managed"
+  serviceMonitorSelector:
+    matchLabels:
+      managed-by: "stateless-pg"
+
+  # Select PodMonitors with label "managed"
+  podMonitorSelector:
+    matchLabels:
+      managed-by: "stateless-pg"
+
+  # Select ScrapeConfigs with label "managed"
+  scrapeConfigSelector:
+    matchLabels:
+      managed-by: "stateless-pg"
+
+  # Storage configuration
+  storage:
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+
+  # Service Account
+  serviceAccountName: stateless-pg-prometheus
+
+  # Resource requests/limits
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi

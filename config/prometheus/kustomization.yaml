@@ -1,11 +1,21 @@
 resources:
 - monitor.yaml
+- prometheus.yaml
+- prometheus_service_account.yaml
+- prometheus-cluster-role.yaml
+- prometheus-cluster-rolebinding.yaml
 
-# [PROMETHEUS-WITH-CERTS] The following patch configures the ServiceMonitor in ../prometheus
-# to securely reference certificates created and managed by cert-manager.
-# Additionally, ensure that you uncomment the [METRICS WITH CERTMANAGER] patch under config/default/kustomization.yaml
-# to mount the "metrics-server-cert" secret in the Manager Deployment.
-#patches:
+# [PROMETHEUS-WITH-CERTS] The following patches configure TLS for both Prometheus and ServiceMonitor
+# Prerequisites:
+# 1. For Prometheus TLS: Create a TLS secret named 'prometheus-tls-secret' in the 'system' namespace
+#    kubectl create secret tls prometheus-tls-secret --cert=path/to/tls.crt --key=path/to/tls.key -n system
+# 2. For ServiceMonitor TLS: Ensure cert-manager is installed and manages 'metrics-server-cert' secret
+# 3. Mount the secret in the Manager Deployment via config/default/kustomization.yaml [METRICS WITH CERTMANAGER] patch
+#
+patches:
+  - path: prometheus_tls_patch.yaml
+    target:
+      kind: Prometheus
 #  - path: monitor_tls_patch.yaml
 #    target:
 #      kind: ServiceMonitor
