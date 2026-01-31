@@ -88,12 +88,22 @@ spec:
                   prefix:
                     description: prefix is the path prefix for all objects stored
                     type: string
+                  provider:
+                    description: provider defines the backend.
+                    enum:
+                    - s3
+                    - gcs
+                    - azure
+                    - minio
+                    - local
+                    type: string
                   region:
                     description: region specifies the storage region
                     type: string
                 required:
                 - bucket
                 - endpoint
+                - provider
                 - region
                 type: object
               pageserverProfileRef:

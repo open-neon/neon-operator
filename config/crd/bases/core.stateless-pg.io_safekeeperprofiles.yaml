@@ -960,6 +960,85 @@ spec:
                         x-kubernetes-list-type: atomic
                     type: object
                 type: object
+              authTokenPath:
+                description: authTokenPath path to JWT token file for peer authentication
+                type: string
+              availabilityZone:
+                description: availabilityZone is an identifier for the safekeeper's
+                  availability zone
+                type: string
+              brokerKeepaliveInterval:
+                default: 15s
+                description: brokerKeepaliveInterval specifies the keepalive ping
+                  interval (e.g., 15s, 5m)
+                type: string
+              controlFileSaveInterval:
+                default: 300s
+                description: controlFileSaveInterval auto-save control file interval
+                type: string
+              currentThreadRuntime:
+                default: false
+                description: currentThreadRuntime runs in single-threaded mode (debugging
+                  only)
+                type: boolean
+              dataDir:
+                default: ./data
+                description: datadir is the path to the safekeeper data directory
+                type: string
+              deleteOffloadedWal:
+                default: false
+                description: deleteOffloadedWal deletes local WAL after offloading
+                type: boolean
+              dev:
+                default: false
+                description: dev enables development mode (disables security checks)
+                type: boolean
+              disablePeriodicBrokerPush:
+                default: false
+                description: disablePeriodicBrokerPush disables broker push (testing
+                  only)
+                type: boolean
+              disableWalBackup:
+                default: false
+                description: disableWalBackup disables WAL backup to remote storage
+                type: boolean
+              enableOffload:
+                default: false
+                description: enableOffload enables automatic switching to offloaded
+                  state
+                type: boolean
+              enablePullTimelineOnStartup:
+                default: false
+                description: enablePullTimelineOnStartup auto-pulls timelines from
+                  peer safekeepers
+                type: boolean
+              enableTlsWalServiceApi:
+                default: false
+                description: enableTlsWalServiceApi enables TLS in WAL service API
+                type: boolean
+              evictionMinResident:
+                default: 15m
+                description: evictionMinResident minimum timeline residency before
+                  eviction
+                type: string
+              forceMetricCollectionOnScrape:
+                default: true
+                description: forceMetricCollectionOnScrape collects metrics on each
+                  scrape
+                type: boolean
+              globalDiskCheckInterval:
+                default: 60s
+                description: globalDiskCheckInterval disk usage check interval
+                type: string
+              heartbeatTimeout:
+                default: 5s
+                description: heartbeatTimeout specifies the peer safekeeper heartbeat
+                  timeout
+                type: string
+              httpAuthPublicKeyPath:
+                description: httpAuthPublicKeyPath specifies the JWT public key for
+                  HTTP service auth
+                type: string
               image:
                 description: kubebuilder:default="ghcr.io/neondatabase/neon:latest"
                 type: string
@@ -995,21 +1074,81 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
+              listenPgTenantOnly:
+                description: listenPgTenantOnly specifies the tenant-scoped WAL service
+                  endpoint
+                type: string
+              logFormat:
+                default: plain
+                description: logFormat specifies the logging format (plain or json)
+                enum:
+                - plain
+                - json
+                type: string
+              maxDeltaForFanout:
+                description: maxDeltaForFanout maximum position delta for fanout
+                format: int64
+                type: integer
+              maxGlobalDiskUsageRatio:
+                default: "0.0"
+                description: maxGlobalDiskUsageRatio portion of filesystem capacity
+                  for all timelines (0.0 = disabled)
+                type: string
+              maxOffloaderLag:
+                default: 134217728
+                description: maxOffloaderLag specifies max LAG before safekeeper elected
+                  for offloading (in bytes)
+                format: int64
+                type: integer
+              maxReelectOffloaderLagBytes:
+                default: 0
+                description: maxReelectOffloaderLagBytes triggers re-election if offloader
+                  lags by this amount
+                format: int64
+                type: integer
               maxReplicas:
                 default: 3
                 format: int64
                 minimum: 3
+                type: integer
+              maxTimelineDiskUsageBytes:
+                default: 0
+                description: maxTimelineDiskUsageBytes specifies max WAL disk per
+                  timeline (0 = disabled)
+                format: int64
                 type: integer
               minReplicas:
                 default: 3
                 format: int64
                 minimum: 3
                 type: integer
+              noSync:
+                default: false
+                description: noSync disables fsync (unsafe, for testing only)
+                type: boolean
               nodeSelector:
                 additionalProperties:
                   type: string
                 description: nodeSelector defines on which Nodes the Pods are scheduled.
                 type: object
+              partialBackupConcurrency:
+                default: 5
+                description: partialBackupConcurrency concurrent partial segment uploads
+                format: int64
+                type: integer
+              partialBackupTimeout:
+                default: 15m
+                description: partialBackupTimeout wait time before uploading partial
+                  segment
+                type: string
+              peerRecovery:
+                default: false
+                description: peerRecovery enables/disables peer recovery
+                type: boolean
+              peerRecoveryEnabled:
+                default: false
+                description: peerRecovery enables/disables peer recovery
+                type: boolean
               persistentVolumeClaimRetentionPolicy:
                 description: |-
                   persistentVolumeClaimRetentionPolicy defines the field controls if and how PVCs are deleted during the lifecycle of a StatefulSet.
@@ -1033,6 +1172,24 @@ spec:
                       the replica count to be deleted.
                     type: string
                 type: object
+              pgAuthPublicKeyPath:
+                description: pgAuthPublicKeyPath specifies the JWT public key for
+                  WAL service auth
+                type: string
+              pgTenantOnlyAuthPublicKeyPath:
+                description: pgTenantOnlyAuthPublicKeyPath specifies the JWT public
+                  key for tenant-only WAL auth
+                type: string
+              remoteStorageMaxConcurrentSyncs:
+                description: remoteStorageMaxConcurrentSyncs specifies max concurrent
+                  syncs to remote storage
+                format: int64
+                type: integer
+              remoteStorageMaxSyncErrors:
+                description: remoteStorageMaxSyncErrors specifies max sync errors
+                  before failure
+                format: int64
+                type: integer
               resources:
                 description: resources defines the resources requests and limits of
                   the 'prometheus' container.
@@ -1327,13 +1484,24 @@ spec:
                         type: string
                     type: object
                 type: object
+              sslCaFile:
+                description: sslCaFile path to trusted CA certificate file
+                type: string
+              sslCertFile:
+                default: server.crt
+                description: sslCertFile path to HTTPS certificate file
+                type: string
+              sslCertReloadPeriod:
+                default: 60s
+                description: sslCertReloadPeriod certificate reload interval
+                type: string
+              sslKeyFile:
+                default: server.key
+                description: sslKeyFile path to HTTPS private key file
+                type: string
               storage:
                 description: storage defines the storage used by SafeKeeper.
                 properties:
-                  disableMountSubPath:
-                    description: 'disableMountSubPath deprecated: subPath usage will
-                      be removed in a future release.'
-                    type: boolean
                   emptyDir:
                     description: |-
                       emptyDir to be used by the StatefulSet.
@@ -2040,6 +2208,11 @@ spec:
                         type: object
                     type: object
                 type: object
+              useHttpsSafekeeperApi:
+                default: false
+                description: useHttpsSafekeeperApi uses HTTPS for peer safekeeper
+                  API
+                type: boolean
               volumeMounts:
                 description: |-
                   volumeMounts allows the configuration of additional VolumeMounts.
@@ -3995,6 +4168,21 @@ spec:
                   - name
                   type: object
                 type: array
+              walBackupParallelJobs:
+                default: 5
+                description: walBackupParallelJobs specifies max parallel WAL segment
+                  uploads
+                format: int64
+                type: integer
+              walReaderFanout:
+                default: false
+                description: walReaderFanout enables fanning out WAL to different
+                  shards
+                type: boolean
+              walsendersKeepHorizon:
+                default: false
+                description: walsendersKeepHorizon keeps WAL for replication connections
+                type: boolean
             type: object
         required:
         - spec

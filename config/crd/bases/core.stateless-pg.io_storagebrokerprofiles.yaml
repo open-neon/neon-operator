@@ -996,6 +996,55 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
+              inline:
+                description: StorageBrokerConfigOptions defines optional configuration
+                  for the StorageBroker
+                properties:
+                  allKeysChanSize:
+                    default: 16384
+                    description: allKeysChanSize defines the size of the all keys
+                      channel buffer
+                    format: int32
+                    minimum: 1
+                    type: integer
+                  http2KeepaliveInterval:
+                    default: 5000ms
+                    description: http2KeepaliveInterval defines the HTTP/2 keepalive
+                      interval (e.g., "5000ms", "10s")
+                    type: string
+                  logFormat:
+                    default: plain
+                    description: logFormat defines the log format ("plain" or "json")
+                    enum:
+                    - plain
+                    - json
+                    type: string
+                  sslCertReloadPeriod:
+                    default: 60s
+                    description: sslCertReloadPeriod defines the SSL certificate reload
+                      period (e.g., "60s", "30s")
+                    type: string
+                  timelineChanSize:
+                    default: 32
+                    description: timelineChanSize defines the size of the timeline
+                      channel buffer
+                    format: int32
+                    minimum: 1
+                    type: integer
+                  tlsSecretRef:
+                    description: tlsSecretRef contains cert/key.
+                    properties:
+                      name:
+                        description: name is unique within a namespace to reference
+                          a secret resource.
+                        type: string
+                      namespace:
+                        description: namespace defines the space within which the
+                          secret name must be unique.
+                        type: string
+                    type: object
+                    x-kubernetes-map-type: atomic
+                type: object
               maxReplicas:
                 default: 1
                 format: int64
@@ -1305,6 +1354,8 @@ spec:
                         type: string
                     type: object
                 type: object
+            required:
+            - inline
             type: object
         required:
         - spec

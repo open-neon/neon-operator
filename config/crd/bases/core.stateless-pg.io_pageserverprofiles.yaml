@@ -960,6 +960,27 @@ spec:
                         x-kubernetes-list-type: atomic
                     type: object
                 type: object
+              controlPlane:
+                description: controlPlane configures controller connectivity.
+                properties:
+                  emergencyMode:
+                    default: false
+                    description: emergencyMode disables controller dependency (dev/CI
+                      only).
+                    type: boolean
+                type: object
+              durability:
+                description: durability controls checkpointing & WAL safety.
+                properties:
+                  checkpointDistance:
+                    default: 256Mi
+                    description: checkpointDistance bounds WAL before flush.
+                    type: string
+                  checkpointTimeout:
+                    default: 10m
+                    description: checkpointTimeout ensures eventual upload.
+                    type: string
+                type: object
               image:
                 description: kubebuilder:default="ghcr.io/neondatabase/neon:latest"
                 type: string
@@ -1005,10 +1026,50 @@ spec:
                 format: int64
                 minimum: 1
                 type: integer
+              mode:
+                default: managed
+                description: mode defines whether PageServer runs standalone or with
+                  a control plane.
+                enum:
+                - standalone
+                - managed
+                type: string
               nodeSelector:
                 additionalProperties:
                   type: string
                 description: nodeSelector defines on which Nodes the Pods are scheduled.
+                type: object
+              observability:
+                description: observability controls logs, metrics, tracing.
+                properties:
+                  logLevel:
+                    default: info
+                    description: logLevel controls verbosity.
+                    enum:
+                    - debug
+                    - info
+                    - warn
+                    - error
+                    type: string
+                  metrics:
+                    default: true
+                    description: metrics enables Prometheus metrics.
+                    type: boolean
+                type: object
+              performance:
+                description: performance controls IO & ingestion tuning.
+                properties:
+                  ingestBatchSize:
+                    description: ingestBatchSize limits WAL ingestion batch.
+                    format: int64
+                    type: integer
+                  ioMode:
+                    default: direct
+                    description: ioMode controls disk IO behavior.
+                    enum:
+                    - buffered
+                    - direct
+                    type: string
                 type: object
               persistentVolumeClaimRetentionPolicy:
                 description: |-
@@ -1092,6 +1153,50 @@ spec:
                       otherwise to an implementation-defined value. Requests cannot exceed Limits.
                       More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                     type: object
+                type: object
+              retention:
+                description: retention controls GC, PITR, and history.
+                properties:
+                  gcInterval:
+                    default: 1h
+                    description: gcInterval defines GC frequency.
+                    type: string
+                  historyRetention:
+                    default: 7d
+                    description: historyRetention controls GC horizon.
+                    type: string
+                  pitrRetention:
+                    default: 7d
+                    description: pitrRetention controls PITR branching.
+                    type: string
+                type: object
+              security:
+                description: security controls auth and TLS.
+                properties:
+                  authType:
+                    default: jwt
+                    description: authType controls API auth.
+                    enum:
+                    - none
+                    - jwt
+                    type: string
+                  enableTLS:
+                    default: true
+                    description: enableTLS enables TLS for PageServer APIs.
+                    type: boolean
+                  tlsSecretRef:
+                    description: tlsSecretRef contains cert/key.
+                    properties:
+                      name:
+                        description: name is unique within a namespace to reference
+                          a secret resource.
+                        type: string
+                      namespace:
+                        description: namespace defines the space within which the
+                          secret name must be unique.
+                        type: string
+                    type: object
+                    x-kubernetes-map-type: atomic
                 type: object
               securityContext:
                 description: |-
@@ -1330,10 +1435,6 @@ spec:
               storage:
                 description: storage defines the storage used by PageServer.
                 properties:
-                  disableMountSubPath:
-                    description: 'disableMountSubPath deprecated: subPath usage will
-                      be removed in a future release.'
-                    type: boolean
                   emptyDir:
                     description: |-
                       emptyDir to be used by the StatefulSet.
