@@ -278,6 +278,13 @@ func generatePageServerToml(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerPro
 	sb.WriteString(fmt.Sprintf("listen_pg_addr = '%s'\n", "0.0.0.0:6400"))
 	sb.WriteString(fmt.Sprintf("http_listen_addr = '%s'\n", "0.0.0.0:9898"))
 
+	// TLS settings
+	if psp.Spec.Security.EnableTLS {
+		sb.WriteString(fmt.Sprintf("listen_https_addr = '%s'\n", "0.0.0.0:9899"))
+		sb.WriteString(fmt.Sprintf("ssl_cert_file = '%s'\n", TLSCertPath))
+		sb.WriteString(fmt.Sprintf("ssl_key_file = '%s'\n", TLSKeyPath))
+	}
+
 	sb.WriteString(fmt.Sprintf("checkpoint_distance = '%s'\n", psp.Spec.Durability.CheckpointDistance))
 
 	sb.WriteString(fmt.Sprintf("checkpoint_timeout = '%s'\n", psp.Spec.Durability.CheckpointTimeout))

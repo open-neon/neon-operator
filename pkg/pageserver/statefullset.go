@@ -26,8 +26,8 @@ import (
 )
 
 const (
-	tlsCertPath = "/etc/pageserver/certs/tls.crt"
-	tlsKeyPath  = "/etc/pageserver/certs/tls.key"
+	TLSCertPath   = "/etc/pageserver/certs/tls.crt"
+	TLSKeyPath    = "/etc/pageserver/certs/tls.key"
 	tlsVolumeName = "tls-certs"
 )
 
