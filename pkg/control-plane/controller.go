@@ -29,10 +29,32 @@ const (
 )
 
 var (
-	EnableTLS = false
-	Protocol  = "http"
-	Port      = httpPort
+	enableTLS = false
+	protocol  = "http"
+	port      = httpPort
 )
+
+// GetEnableTLS returns whether TLS is enabled for the control plane server
+func GetEnableTLS() bool {
+	return enableTLS
+}
+
+// GetProtocol returns the protocol (http or https) for the control plane server
+func GetProtocol() string {
+	return protocol
+}
+
+// GetPort returns the port for the control plane server
+func GetPort() string {
+	return port
+}
+
+// setTLSConfig is an internal function to set TLS configuration
+func setTLSConfig(enabled bool, proto, p string) {
+	enableTLS = enabled
+	protocol = proto
+	port = p
+}
 
 // NewControlPlaneServer creates a new control plane server instance
 // The port is automatically selected based on enableTLS flag:
@@ -42,9 +64,8 @@ func NewControlPlaneServer(enableTLS bool, certPath, certKey string, logger *slo
 	// Select port based on TLS setting
 	addr := httpPort
 	if enableTLS {
-		Protocol = "https"
-		EnableTLS = true
-		Port = httpsPort
+		setTLSConfig(true, "https", httpsPort)
+		addr = httpsPort
 	}
 	logger = logger.With("component", controllerName)
 
@@ -77,9 +98,7 @@ func NewControlPlaneServer(enableTLS bool, certPath, certKey string, logger *slo
 		if err != nil {
 			logger.Warn("failed to load TLS certificate, falling back to HTTP", "error", err)
 			// Disable TLS and use HTTP instead
-			EnableTLS = false
-			Protocol = "http"
-			Port = httpPort
+			setTLSConfig(false, "http", httpPort)
 			cps.server.Addr = httpPort
 		} else {
 			cps.server.TLSConfig = &tls.Config{
@@ -95,9 +114,9 @@ func NewControlPlaneServer(enableTLS bool, certPath, certKey string, logger *slo
 // Start starts the control plane server
 func (cps *ControlPlaneServer) Start() error {
 
-	cps.logger.Info("starting control plane server", "address", Port, "protocol", Protocol)
+	cps.logger.Info("starting control plane server", "address", GetPort(), "protocol", GetProtocol())
 
-	if EnableTLS {
+	if GetEnableTLS() {
 		return cps.server.ListenAndServeTLS("", "")
 	}
 	return cps.server.ListenAndServe()
