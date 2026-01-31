@@ -299,9 +299,15 @@ func generatePageServerToml(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerPro
 
 	sb.WriteString(fmt.Sprintf("virtual_file_io_mode = %s\n", psp.Spec.Performance.IOMode))
 
-	sb.WriteString(fmt.Sprintf("# auth_type = '%s'\n", psp.Spec.Security.AuthType))
-
 	sb.WriteString(fmt.Sprintf("log_level = '%s'\n", strings.ToLower(psp.Spec.Observability.LogLevel)))
+
+	// ssl_ca_certs = "/path/to/control-plane-selfsigned-cert.pem"
+    // control_plane_api_token = "eyJ0eXAi..."
+
+	// http_auth_type = "NeonJWT | Trust"       # Storage controller must send JWT
+    // pg_auth_type = "NeonJWT"          # Compute nodes must send JWT
+   // grpc_auth_type = "NeonJWT"        # Storage controller gRPC must use JWT
+   // auth_validation_public_key_path = "/etc/neon/auth_public_key.pem"
 
 	return sb.String()
 }
