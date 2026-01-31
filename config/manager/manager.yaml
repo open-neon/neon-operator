@@ -70,7 +70,16 @@ spec:
               fieldPath: metadata.namespace
         image: controller:latest
         name: manager
-        ports: []
+        ports:
+        - containerPort: 9090
+          name: control-plane-http
+          protocol: TCP
+        - containerPort: 9443
+          name: control-plane-https
+          protocol: TCP
+        - containerPort: 8081
+          name: health-probe
+          protocol: TCP
         securityContext:
           readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false

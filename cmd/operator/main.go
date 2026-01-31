@@ -37,6 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	corev1alpha1 "github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	controlplaneserver "github.com/stateless-pg/stateless-pg/pkg/control-plane"
 	neonclusterController "github.com/stateless-pg/stateless-pg/pkg/neoncluster"
 	pageserverController "github.com/stateless-pg/stateless-pg/pkg/pageserver"
 	safekeeperController "github.com/stateless-pg/stateless-pg/pkg/safekeeper"
@@ -53,6 +54,9 @@ var (
 	probeAddr                                        string
 	secureMetrics                                    bool
 	enableHTTP2                                      bool
+	controlPlaneEnableTLS                            bool
+	controlPlaneCertPath                             string
+	controlPlaneCertKeyPath                          string
 )
 
 func init() {
@@ -80,6 +84,12 @@ func parseFlags(fs *flag.FlagSet) {
 	fs.StringVar(&metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
 	fs.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	fs.BoolVar(&controlPlaneEnableTLS, "control-plane-enable-tls", false,
+		"If set, TLS will be enabled for the control plane server")
+	fs.StringVar(&controlPlaneCertPath, "control-plane-cert-path", "",
+		"The path to the TLS certificate file for the control plane server")
+	fs.StringVar(&controlPlaneCertKeyPath, "control-plane-cert-key-path", "",
+		"The path to the TLS certificate key file for the control plane server")
 	// No need to check for errors because Parse would exit on error.
 	_ = fs.Parse(os.Args[1:])
 }
@@ -242,9 +252,29 @@ func main() {
 		os.Exit(1)
 	}
 
+	var cpServer *controlplaneserver.ControlPlaneServer
+	var cpServerErr error
+	cpServer, cpServerErr = controlplaneserver.NewControlPlaneServer(controlPlaneEnableTLS, controlPlaneCertPath, controlPlaneCertKeyPath, logger, mgr.GetClient(), mgr.GetConfig(), mgr.GetScheme())
+	if cpServerErr != nil {
+		logger.Error("unable to create control plane server", "error", cpServerErr)
+		os.Exit(1)
+	}
+
+	go func() {
+		if err := cpServer.Start(); err != nil {
+			logger.Error("control plane server error", "error", err)
+			os.Exit(1)
+		}
+	}()
+
 	logger.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		logger.Error("problem running manager", "error", err)
 		os.Exit(1)
+	}
+
+	// Gracefully shutdown control-plane server if it was started
+	if cpServer != nil {
+		_ = cpServer.Stop()
 	}
 }

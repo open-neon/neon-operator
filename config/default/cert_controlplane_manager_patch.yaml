@@ -1,0 +1,38 @@
+# This patch adds the args, volumes, and ports to allow the manager to use the control-plane certs.
+
+# Add the volumeMount for the control-plane certs
+- op: add
+  path: /spec/template/spec/containers/0/volumeMounts/-
+  value:
+    mountPath: /etc/control-plane-certs
+    name: control-plane-certs
+    readOnly: true
+
+# Add the --control-plane-enable-tls argument
+- op: add
+  path: /spec/template/spec/containers/0/args/-
+  value: --control-plane-enable-tls
+
+# Add the --control-plane-cert-path argument
+- op: add
+  path: /spec/template/spec/containers/0/args/-
+  value: --control-plane-cert-path=/etc/control-plane-certs
+
+# Add the --control-plane-cert-key-path argument
+- op: add
+  path: /spec/template/spec/containers/0/args/-
+  value: --control-plane-cert-key-path=/etc/control-plane-certs
+
+# Add the control-plane certs volume configuration
+- op: add
+  path: /spec/template/spec/volumes/-
+  value:
+    name: control-plane-certs
+    secret:
+      secretName: control-plane-certs
+      optional: true
+      items:
+        - key: tls.crt
+          path: tls.crt
+        - key: tls.key
+          path: tls.key
