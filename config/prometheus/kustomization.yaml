@@ -1,6 +1,9 @@
 resources:
 - monitor.yaml
-- pronetheus.yaml
+- prometheus.yaml
+- prometheus_service_account.yaml
+- prometheus-cluster-role.yaml
+- prometheus-cluster-rolebinding.yaml
 
 # [PROMETHEUS-WITH-CERTS] The following patch configures the ServiceMonitor in ../prometheus
 # to securely reference certificates created and managed by cert-manager.

@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: stateless-pg-prometheus
+  labels:
+    app.kubernetes.io/name: stateless-pg
+    app.kubernetes.io/managed-by: kustomize
+rules:
+- apiGroups: [""]
+  resources:
+    - nodes
+    - nodes/metrics
+    - nodes/proxy
+    - services
+    - endpoints
+    - pods
+  verbs: ["get", "list", "watch"]
