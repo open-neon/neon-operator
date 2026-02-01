@@ -46,7 +46,8 @@ func makePageServerStatefulSet(ps *v1alpha1.PageServer, spec *appsv1.StatefulSet
 	return statefulSet, nil
 }
 
-func makePageServerStatefulSetSpec(psName string, psp *v1alpha1.PageServerProfile) (*appsv1.StatefulSetSpec, error) {
+func makePageServerStatefulSetSpec(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerProfile) (*appsv1.StatefulSetSpec, error) {
+	psName := ps.GetName()
 	cpf := psp.Spec.CommonFields
 
 	image := k8sutils.NeonDefaultImage
@@ -90,8 +91,8 @@ func makePageServerStatefulSetSpec(psName string, psp *v1alpha1.PageServerProfil
 		MountPath: "/data/.neon",
 	})
 
-	// Add TLS secret volume mount if TLS is enabled
-	if psp.Spec.Security.EnableTLS && psp.Spec.Security.TLSSecretRef != nil {
+	// Add TLS secret volume mount if TLS is enabled and secret is referenced
+	if psp.Spec.Security.EnableTLS && ps.Spec.TLSSecretRef != nil {
 		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
 			Name:      tlsVolumeName,
 			MountPath: "/etc/pageserver/certs",
@@ -162,13 +163,13 @@ func makePageServerStatefulSetSpec(psName string, psp *v1alpha1.PageServerProfil
 		},
 	})
 
-	// Add TLS secret volume if TLS is enabled
-	if psp.Spec.Security.EnableTLS && psp.Spec.Security.TLSSecretRef != nil {
+	// Add TLS secret volume if TLS is enabled and secret is referenced
+	if psp.Spec.Security.EnableTLS && ps.Spec.TLSSecretRef != nil {
 		podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
 			Name: tlsVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: psp.Spec.Security.TLSSecretRef.Name,
+					SecretName: ps.Spec.TLSSecretRef.Name,
 				},
 			},
 		})

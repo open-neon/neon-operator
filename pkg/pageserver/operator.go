@@ -119,7 +119,7 @@ func (o *Operator) updateStatefulSet(ctx context.Context, ps *v1alpha1.PageServe
 		}
 	}
 
-	spec, err := makePageServerStatefulSetSpec(ps.GetName(), profile)
+	spec, err := makePageServerStatefulSetSpec(ps, profile)
 	if err != nil {
 		return fmt.Errorf("failed to create pageserver statefulset spec: %w", err)
 	}
