@@ -40,6 +40,7 @@ import (
 
 const (
 	controlPlaneDefaultSecretName = "control-plane-certs"
+	controlPlaneJWTSecretName     = "control-plane-jwt-keys"
 )
 
 // Operator manages lifecycle for NeonCluster resources.
@@ -148,10 +149,22 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 			Namespace: profile.Namespace,
 		},
 		ObjectStorage: nc.Spec.ObjectStorage,
-		TLSSecretRef: &corev1.SecretReference{
+	}
+
+	// Add TLS secret reference if TLS is enabled
+	if controlplane.GetEnableTLS() {
+		desiredSpec.TLSSecretRef = &corev1.SecretReference{
 			Name:      controlPlaneDefaultSecretName,
 			Namespace: nc.Namespace,
-		},
+		}
+	}
+
+	// Add JWT public key secret reference if JWT is enabled
+	if controlplane.GetEnableJWT() {
+		desiredSpec.JwtPublicKeySecretRef = &corev1.SecretReference{
+			Name:      controlPlaneJWTSecretName,
+			Namespace: nc.Namespace,
+		}
 	}
 
 	// Calculate hash of desired spec
@@ -500,20 +513,18 @@ func (r *Operator) copyControlPlanePublicKey(ctx context.Context, nc *v1alpha1.N
 		return nil
 	}
 	const (
-		jwtPublicKeyKey     = "jwt.pub"
-		secretName          = "control-plane-jwt-keys"
-		destSecretName      = "control-plane-jwt-keys"
-		hashAnnotation      = "neon.io/jwt-public-key-hash"
+		jwtPublicKeyKey = "jwt.pub"
+		hashAnnotation  = "neon.io/jwt-public-key-hash"
 	)
 
 	// Get the control plane namespace (operator namespace)
 	controlPlaneNamespace := k8sutils.GetOperatorNamespace()
 
 	// Get the control-plane-jwt-keys secret from control-plane namespace
-	sourceSecret, err := r.kclient.CoreV1().Secrets(controlPlaneNamespace).Get(ctx, secretName, metav1.GetOptions{})
+	sourceSecret, err := r.kclient.CoreV1().Secrets(controlPlaneNamespace).Get(ctx, controlPlaneJWTSecretName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			logger.Warn("Control plane JWT secret not found, skipping copy", "namespace", controlPlaneNamespace, "secret", secretName)
+			logger.Warn("Control plane JWT secret not found, skipping copy", "namespace", controlPlaneNamespace, "secret", controlPlaneJWTSecretName)
 			return nil
 		}
 		return fmt.Errorf("failed to get control-plane JWT secret: %w", err)
@@ -522,7 +533,7 @@ func (r *Operator) copyControlPlanePublicKey(ctx context.Context, nc *v1alpha1.N
 	// Extract jwt.pub data
 	jwtPubData, ok := sourceSecret.Data[jwtPublicKeyKey]
 	if !ok {
-		return fmt.Errorf("jwt.pub key not found in %s/%s secret", controlPlaneNamespace, secretName)
+		return fmt.Errorf("jwt.pub key not found in %s/%s secret", controlPlaneNamespace, controlPlaneJWTSecretName)
 	}
 
 	// Calculate hash of jwt.pub content
@@ -530,7 +541,7 @@ func (r *Operator) copyControlPlanePublicKey(ctx context.Context, nc *v1alpha1.N
 	hashStr := hex.EncodeToString(hash[:])
 
 	// Try to get existing secret
-	existingSecret, err := r.kclient.CoreV1().Secrets(nc.Namespace).Get(ctx, destSecretName, metav1.GetOptions{})
+	existingSecret, err := r.kclient.CoreV1().Secrets(nc.Namespace).Get(ctx, controlPlaneJWTSecretName, metav1.GetOptions{})
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to get destination JWT secret: %w", err)
@@ -539,7 +550,7 @@ func (r *Operator) copyControlPlanePublicKey(ctx context.Context, nc *v1alpha1.N
 		// Create new secret with hash annotation
 		newSecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      destSecretName,
+				Name:      controlPlaneJWTSecretName,
 				Namespace: nc.Namespace,
 				Annotations: map[string]string{
 					hashAnnotation: hashStr,
@@ -556,7 +567,7 @@ func (r *Operator) copyControlPlanePublicKey(ctx context.Context, nc *v1alpha1.N
 			return fmt.Errorf("failed to create control-plane JWT secret: %w", err)
 		}
 
-		logger.Info("Created control-plane JWT secret in neon cluster namespace", "namespace", nc.Namespace, "secret", destSecretName)
+		logger.Info("Created control-plane JWT secret in neon cluster namespace", "namespace", nc.Namespace, "secret", controlPlaneJWTSecretName)
 		return nil
 	}
 
@@ -567,7 +578,7 @@ func (r *Operator) copyControlPlanePublicKey(ctx context.Context, nc *v1alpha1.N
 	}
 
 	if existingHash == hashStr {
-		logger.Debug("Control-plane JWT secret is up to date, no update needed", "namespace", nc.Namespace, "secret", destSecretName)
+		logger.Debug("Control-plane JWT secret is up to date, no update needed", "namespace", nc.Namespace, "secret", controlPlaneJWTSecretName)
 		return nil
 	}
 
@@ -588,6 +599,6 @@ func (r *Operator) copyControlPlanePublicKey(ctx context.Context, nc *v1alpha1.N
 		return fmt.Errorf("failed to update control-plane JWT secret: %w", err)
 	}
 
-	logger.Info("Updated control-plane JWT secret in neon cluster namespace", "namespace", nc.Namespace, "secret", destSecretName)
+	logger.Info("Updated control-plane JWT secret in neon cluster namespace", "namespace", nc.Namespace, "secret", controlPlaneJWTSecretName)
 	return nil
 }

@@ -47,6 +47,10 @@ type PageServerSpec struct {
 	// tlsSecretRef contains cert/key for mtls between services.
 	// +optional
 	TLSSecretRef *v1.SecretReference `json:"tlsSecretRef,omitempty"`
+
+	// jwtPublicKeySecretRef contains public key for jwt auth between control plane and pageserver.
+	// +optional
+	JwtPublicKeySecretRef *v1.SecretReference `json:"jwtPublicKeySecretRef,omitempty"`
 }
 
 // PageServerStatus defines the observed state of PageServer.
