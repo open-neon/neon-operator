@@ -33,6 +33,7 @@ const (
 
 var (
 	enableTLS = false
+	enableJWT = false
 	protocol  = "http"
 	port      = httpPort
 )
@@ -40,6 +41,11 @@ var (
 // GetEnableTLS returns whether TLS is enabled for the control plane server
 func GetEnableTLS() bool {
 	return enableTLS
+}
+
+// GetEnableJWT returns whether JWT authentication is enabled for the control plane server
+func GetEnableJWT() bool {
+	return enableJWT
 }
 
 // GetProtocol returns the protocol (http or https) for the control plane server
@@ -63,13 +69,14 @@ func setTLSConfig(enabled bool, proto, p string) {
 // The port is automatically selected based on enableTLS flag:
 // - :9090 for HTTP (when TLS is disabled)
 // - :9443 for HTTPS (when TLS is enabled)
-func NewControlPlaneServer(enableTLS bool, logger *slog.Logger, nclient client.Client, config *rest.Config, scheme *runtime.Scheme) (*ControlPlaneServer, error) {
+func NewControlPlaneServer(enableTLSFlag bool, enableJWTFlag bool, logger *slog.Logger, nclient client.Client, config *rest.Config, scheme *runtime.Scheme) (*ControlPlaneServer, error) {
 	// Select port based on TLS setting
 	addr := httpPort
-	if enableTLS {
+	if enableTLSFlag {
 		setTLSConfig(true, "https", httpsPort)
 		addr = httpsPort
 	}
+	enableJWT = enableJWTFlag
 	logger = logger.With("component", controllerName)
 
 	// Create kubernetes clientset for direct client-go operations
