@@ -136,11 +136,31 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 		ps = ps.DeepCopy()
 	}
 
-	if !notFound && ps.Spec.ProfileRef != nil &&
-		ps.Spec.ProfileRef.Name == profile.Name &&
-		ps.Spec.ProfileRef.Namespace == profile.Namespace {
-		// No update needed
-		return nil
+	// Prepare the desired spec
+	desiredSpec := v1alpha1.PageServerSpec{
+		ProfileRef: &corev1.ObjectReference{
+			Name:      profile.Name,
+			Namespace: profile.Namespace,
+		},
+		ObjectStorage: nc.Spec.ObjectStorage,
+		TLSSecretRef: &corev1.SecretReference{
+			Name:      controlPlaneDefaultSecretName,
+			Namespace: nc.Namespace,
+		},
+	}
+
+	// Calculate hash of desired spec
+	hash, err := k8sutils.CreateInputHash(metav1.ObjectMeta{}, desiredSpec)
+	if err != nil {
+		return fmt.Errorf("failed to create input hash for pageserver: %w", err)
+	}
+
+	// Check if update is needed
+	if !notFound {
+		if ps.Annotations != nil && ps.Annotations[k8sutils.InputHashAnnotationKey] == hash {
+			// No update needed
+			return nil
+		}
 	}
 
 	if notFound {
@@ -148,18 +168,11 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      psName,
 				Namespace: nc.Namespace,
-			},
-			Spec: v1alpha1.PageServerSpec{
-				ProfileRef: &corev1.ObjectReference{
-					Name:      profile.Name,
-					Namespace: profile.Namespace,
-				},
-				ObjectStorage: nc.Spec.ObjectStorage,
-				TLSSecretRef: &corev1.SecretReference{
-					Name:      controlPlaneDefaultSecretName,
-					Namespace: nc.Namespace,
+				Annotations: map[string]string{
+					k8sutils.InputHashAnnotationKey: hash,
 				},
 			},
+			Spec: desiredSpec,
 		}
 
 		operator.UpdateObject(ps,
@@ -180,15 +193,11 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 		return nil
 	}
 
-	ps.Spec.ProfileRef = &corev1.ObjectReference{
-		Name:      profile.Name,
-		Namespace: profile.Namespace,
+	ps.Spec = desiredSpec
+	if ps.Annotations == nil {
+		ps.Annotations = make(map[string]string)
 	}
-	ps.Spec.ObjectStorage = nc.Spec.ObjectStorage
-	ps.Spec.TLSSecretRef = &corev1.SecretReference{
-		Name:      controlPlaneDefaultSecretName,
-		Namespace: nc.Namespace,
-	}
+	ps.Annotations[k8sutils.InputHashAnnotationKey] = hash
 
 	err = r.nclient.Update(ctx, ps)
 	if err != nil {
@@ -219,11 +228,26 @@ func (r *Operator) updateSafeKeeper(ctx context.Context, nc *v1alpha1.NeonCluste
 		sk = sk.DeepCopy()
 	}
 
-	if !notFound && sk.Spec.ProfileRef != nil &&
-		sk.Spec.ProfileRef.Name == profile.Name &&
-		sk.Spec.ProfileRef.Namespace == profile.Namespace {
-		// No update needed
-		return nil
+	// Prepare the desired spec
+	desiredSpec := v1alpha1.SafeKeeperSpec{
+		ProfileRef: &corev1.ObjectReference{
+			Name:      profile.Name,
+			Namespace: profile.Namespace,
+		},
+	}
+
+	// Calculate hash of desired spec
+	hash, err := k8sutils.CreateInputHash(metav1.ObjectMeta{}, desiredSpec)
+	if err != nil {
+		return fmt.Errorf("failed to create input hash for safekeeper: %w", err)
+	}
+
+	// Check if update is needed
+	if !notFound {
+		if sk.Annotations != nil && sk.Annotations[k8sutils.InputHashAnnotationKey] == hash {
+			// No update needed
+			return nil
+		}
 	}
 
 	if notFound {
@@ -231,13 +255,11 @@ func (r *Operator) updateSafeKeeper(ctx context.Context, nc *v1alpha1.NeonCluste
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      skname,
 				Namespace: nc.Namespace,
-			},
-			Spec: v1alpha1.SafeKeeperSpec{
-				ProfileRef: &corev1.ObjectReference{
-					Name:      profile.Name,
-					Namespace: profile.Namespace,
+				Annotations: map[string]string{
+					k8sutils.InputHashAnnotationKey: hash,
 				},
 			},
+			Spec: desiredSpec,
 		}
 
 		operator.UpdateObject(sk,
@@ -258,10 +280,11 @@ func (r *Operator) updateSafeKeeper(ctx context.Context, nc *v1alpha1.NeonCluste
 		return nil
 	}
 
-	sk.Spec.ProfileRef = &corev1.ObjectReference{
-		Name:      profile.Name,
-		Namespace: profile.Namespace,
+	sk.Spec = desiredSpec
+	if sk.Annotations == nil {
+		sk.Annotations = make(map[string]string)
 	}
+	sk.Annotations[k8sutils.InputHashAnnotationKey] = hash
 
 	err = r.nclient.Update(ctx, sk)
 	if err != nil {
@@ -292,11 +315,26 @@ func (r *Operator) updateStorageBroker(ctx context.Context, nc *v1alpha1.NeonClu
 		sb = sb.DeepCopy()
 	}
 
-	if !notFound && sb.Spec.ProfileRef != nil &&
-		sb.Spec.ProfileRef.Name == profile.Name &&
-		sb.Spec.ProfileRef.Namespace == profile.Namespace {
-		// No update needed
-		return nil
+	// Prepare the desired spec
+	desiredSpec := v1alpha1.StorageBrokerSpec{
+		ProfileRef: &corev1.ObjectReference{
+			Name:      profile.Name,
+			Namespace: profile.Namespace,
+		},
+	}
+
+	// Calculate hash of desired spec
+	hash, err := k8sutils.CreateInputHash(metav1.ObjectMeta{}, desiredSpec)
+	if err != nil {
+		return fmt.Errorf("failed to create input hash for storagebroker: %w", err)
+	}
+
+	// Check if update is needed
+	if !notFound {
+		if sb.Annotations != nil && sb.Annotations[k8sutils.InputHashAnnotationKey] == hash {
+			// No update needed
+			return nil
+		}
 	}
 
 	if notFound {
@@ -304,13 +342,11 @@ func (r *Operator) updateStorageBroker(ctx context.Context, nc *v1alpha1.NeonClu
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      sbname,
 				Namespace: nc.Namespace,
-			},
-			Spec: v1alpha1.StorageBrokerSpec{
-				ProfileRef: &corev1.ObjectReference{
-					Name:      profile.Name,
-					Namespace: profile.Namespace,
+				Annotations: map[string]string{
+					k8sutils.InputHashAnnotationKey: hash,
 				},
 			},
+			Spec: desiredSpec,
 		}
 
 		operator.UpdateObject(sb,
@@ -331,10 +367,11 @@ func (r *Operator) updateStorageBroker(ctx context.Context, nc *v1alpha1.NeonClu
 		return nil
 	}
 
-	sb.Spec.ProfileRef = &corev1.ObjectReference{
-		Name:      profile.Name,
-		Namespace: profile.Namespace,
+	sb.Spec = desiredSpec
+	if sb.Annotations == nil {
+		sb.Annotations = make(map[string]string)
 	}
+	sb.Annotations[k8sutils.InputHashAnnotationKey] = hash
 
 	err = r.nclient.Update(ctx, sb)
 	if err != nil {
