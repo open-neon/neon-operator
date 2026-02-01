@@ -33,6 +33,7 @@ import (
 
 	"github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
 	corev1alpha1 "github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	controlplane "github.com/stateless-pg/stateless-pg/pkg/control-plane"
 	k8sutils "github.com/stateless-pg/stateless-pg/pkg/k8s-utils"
 	"github.com/stateless-pg/stateless-pg/pkg/operator"
 )
@@ -384,6 +385,10 @@ func (r *Operator) updateStorageBroker(ctx context.Context, nc *v1alpha1.NeonClu
 }
 
 func (r *Operator) copyControlPlaneCertSecret(ctx context.Context, nc *v1alpha1.NeonCluster, logger *slog.Logger) error {
+	if !controlplane.GetEnableTLS() {
+		// TLS not enabled, nothing to do
+		return nil
+	}
 	const (
 		tlsCertKey     = "tls.crt"
 		tlsKeyKey      = "tls.key"
