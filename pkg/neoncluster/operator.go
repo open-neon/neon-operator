@@ -37,6 +37,10 @@ import (
 	"github.com/stateless-pg/stateless-pg/pkg/operator"
 )
 
+const (
+	controlPlaneDefaultSecretName = "control-plane-certs"
+)
+
 // Operator manages lifecycle for NeonCluster resources.
 type Operator struct {
 	nclient client.Client
@@ -151,6 +155,10 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 					Namespace: profile.Namespace,
 				},
 				ObjectStorage: nc.Spec.ObjectStorage,
+				TLSSecretRef: &corev1.SecretReference{
+					Name:      controlPlaneDefaultSecretName,
+					Namespace: nc.Namespace,
+				},
 			},
 		}
 
@@ -177,6 +185,10 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 		Namespace: profile.Namespace,
 	}
 	ps.Spec.ObjectStorage = nc.Spec.ObjectStorage
+	ps.Spec.TLSSecretRef = &corev1.SecretReference{
+		Name:      controlPlaneDefaultSecretName,
+		Namespace: nc.Namespace,
+	}
 
 	err = r.nclient.Update(ctx, ps)
 	if err != nil {
@@ -336,11 +348,12 @@ func (r *Operator) updateStorageBroker(ctx context.Context, nc *v1alpha1.NeonClu
 
 func (r *Operator) copyControlPlaneCertSecret(ctx context.Context, nc *v1alpha1.NeonCluster, logger *slog.Logger) error {
 	const (
-		secretName     = "control-plane-certs"
 		tlsCertKey     = "tls.crt"
 		tlsKeyKey      = "tls.key"
 		hashAnnotation = "neon.io/cert-hash"
 	)
+
+	secretName := controlPlaneDefaultSecretName
 
 	// Get the control plane namespace (operator namespace)
 	controlPlaneNamespace := k8sutils.GetOperatorNamespace()
