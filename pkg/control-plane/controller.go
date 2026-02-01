@@ -38,6 +38,7 @@ var (
 	enableJWT = false
 	protocol  = "http"
 	port      = httpPort
+	jwtToken = ""
 )
 
 // GetEnableTLS returns whether TLS is enabled for the control plane server
@@ -58,6 +59,11 @@ func GetProtocol() string {
 // GetPort returns the port for the control plane server
 func GetPort() string {
 	return port
+}
+
+// GetJWTToken returns the JWT token for the control plane server
+func GetJWTToken() string {
+	return jwtToken
 }
 
 // setTLSConfig is an internal function to set TLS configuration
@@ -117,6 +123,25 @@ func NewControlPlaneServer(enableTLSFlag bool, enableJWTFlag bool, logger *slog.
 				Certificates: []tls.Certificate{cert},
 			}
 			logger.Info("TLS enabled for control plane server", "certPath", certPath)
+		}
+	}
+
+	// Initialize JWT if enabled
+	if enableJWT {
+		jwtMgr, err := NewJWTManager(logger)
+		if err != nil {
+			logger.Warn("failed to initialize JWT manager, disabling JWT authentication", "error", err)
+			enableJWT = false
+		} else {
+			// Generate JWT token with no expiry
+			token, err := jwtMgr.GenerateToken("control-plane", nil)
+			if err != nil {
+				logger.Warn("failed to generate JWT token, disabling JWT authentication", "error", err)
+				enableJWT = false
+			} else {
+				jwtToken = token
+				logger.Info("JWT authentication enabled for control plane server")
+			}
 		}
 	}
 
