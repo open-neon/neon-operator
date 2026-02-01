@@ -46,6 +46,10 @@ patches:
 - path: cert_controlplane_patch.yaml
   target:
     kind: Deployment
+# [CONTROL-PLANE-JWT] The following patch will enable JWT authentication for the control plane.
+- path: jwt_controlplane_patch.yaml
+  target:
+    kind: Deployment
 
 # Uncomment the patches line if you enable Metrics and CertManager
 # [METRICS-WITH-CERTS] To enable metrics protected with certManager, uncomment the following line.
