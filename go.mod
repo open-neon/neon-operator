@@ -4,6 +4,7 @@ go 1.24.6
 
 require (
 	github.com/go-logr/logr v1.4.2
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.1

@@ -144,12 +144,8 @@ type SecuritySpec struct {
 	// +kubebuilder:default=true
 	EnableTLS bool `json:"enableTLS,omitempty"`
 
-	// tlsSecretRef contains cert/key.
-	// +optional
-	TLSSecretRef *v1.SecretReference `json:"tlsSecretRef,omitempty"`
-
 	// authType controls API auth.
-	// +kubebuilder:validation:Enum=none;jwt
+	// +kubebuilder:validation:Enum=Trust;NeonJWT
 	// +kubebuilder:default=jwt
 	AuthType string `json:"authType,omitempty"`
 }

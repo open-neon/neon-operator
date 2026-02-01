@@ -36,6 +36,11 @@ import (
 	k8sutils "github.com/stateless-pg/stateless-pg/pkg/k8s-utils"
 )
 
+const (
+	jwtAuth = "NeonJWT"
+	noAuth  = "Trust"
+)
+
 // Operator manages lifecycle for PageServer resources.
 type Operator struct {
 	nclient client.Client
@@ -119,7 +124,7 @@ func (o *Operator) updateStatefulSet(ctx context.Context, ps *v1alpha1.PageServe
 		}
 	}
 
-	spec, err := makePageServerStatefulSetSpec(ps.GetName(), profile)
+	spec, err := makePageServerStatefulSetSpec(ps, profile)
 	if err != nil {
 		return fmt.Errorf("failed to create pageserver statefulset spec: %w", err)
 	}
@@ -167,7 +172,7 @@ func (o *Operator) updateStatefulSet(ctx context.Context, ps *v1alpha1.PageServe
 }
 
 func (o *Operator) updateHeadlessService(ctx context.Context, ps *v1alpha1.PageServer) error {
-	svc, err := o.kclient.CoreV1().Services(ps.GetNamespace()).Get(ctx, "pageserver", metav1.GetOptions{})
+	svc, err := o.kclient.CoreV1().Services(ps.GetNamespace()).Get(ctx, ps.GetName(), metav1.GetOptions{})
 	notFound := false
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -272,11 +277,28 @@ func generatePageServerToml(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerPro
 	sb.WriteString(fmt.Sprintf("control_plane_api = '%s'\n", fmt.Sprintf("%s://%s.%s.svc.cluster.local:%s", controlplane.GetProtocol(), controlplane.ServiceName, k8sutils.GetOperatorNamespace(), controlplane.GetPort())))
 	sb.WriteString(fmt.Sprintf("control_plane_emergency_mode = '%t'\n", psp.Spec.ControlPlane.EmergencyMode))
 
+	if controlplane.GetEnableTLS() {
+		sb.WriteString(fmt.Sprintf("ssl_ca_certs = %s\n", TLSCertPath))
+	}
+
 	neonClusterName := ps.Labels["neoncluster"]
 	sb.WriteString(fmt.Sprintf("broker_endpoint = '%s'\n", fmt.Sprintf("http://%s-broker.%s.svc.cluster.local:50051", neonClusterName, ps.GetNamespace())))
 	// Network settings
 	sb.WriteString(fmt.Sprintf("listen_pg_addr = '%s'\n", "0.0.0.0:6400"))
 	sb.WriteString(fmt.Sprintf("http_listen_addr = '%s'\n", "0.0.0.0:9898"))
+
+	if controlplane.GetJWTToken() != "" {
+		sb.WriteString(fmt.Sprintf("http_auth_type = '%s'\n", jwtAuth))
+	} else {
+		sb.WriteString(fmt.Sprintf("http_auth_type = '%s'\n", noAuth))
+	}
+
+	// TLS settings
+	if psp.Spec.Security.EnableTLS && ps.Spec.TLSSecretRef != nil {
+		sb.WriteString(fmt.Sprintf("listen_https_addr = '%s'\n", "0.0.0.0:9899"))
+		sb.WriteString(fmt.Sprintf("ssl_cert_file = '%s'\n", TLSCertPath))
+		sb.WriteString(fmt.Sprintf("ssl_key_file = '%s'\n", TLSKeyPath))
+	}
 
 	sb.WriteString(fmt.Sprintf("checkpoint_distance = '%s'\n", psp.Spec.Durability.CheckpointDistance))
 
@@ -292,9 +314,18 @@ func generatePageServerToml(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerPro
 
 	sb.WriteString(fmt.Sprintf("virtual_file_io_mode = %s\n", psp.Spec.Performance.IOMode))
 
-	sb.WriteString(fmt.Sprintf("# auth_type = '%s'\n", psp.Spec.Security.AuthType))
-
 	sb.WriteString(fmt.Sprintf("log_level = '%s'\n", strings.ToLower(psp.Spec.Observability.LogLevel)))
+
+	sb.WriteString(fmt.Sprintf("pg_auth_type = '%s'\n", psp.Spec.Security.AuthType))
+	sb.WriteString(fmt.Sprintf("grpc_auth_type = '%s'\n", psp.Spec.Security.AuthType))
+
+	if controlplane.GetJWTToken() != "" {
+		sb.WriteString(fmt.Sprintf("control_plane_api_token = '%s'\n", controlplane.GetJWTToken()))
+	}
+
+	if controlplane.GetEnableJWT() {
+		sb.WriteString(fmt.Sprintf("auth_validation_public_key_path = '%s'\n", PublicKeyPath))
+	}
 
 	return sb.String()
 }

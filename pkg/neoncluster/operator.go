@@ -18,6 +18,8 @@ package neoncluster
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 
@@ -31,7 +33,14 @@ import (
 
 	"github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
 	corev1alpha1 "github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	controlplane "github.com/stateless-pg/stateless-pg/pkg/control-plane"
+	k8sutils "github.com/stateless-pg/stateless-pg/pkg/k8s-utils"
 	"github.com/stateless-pg/stateless-pg/pkg/operator"
+)
+
+const (
+	controlPlaneDefaultSecretName = "control-plane-certs"
+	controlPlaneJWTSecretName     = "control-plane-jwt-keys"
 )
 
 // Operator manages lifecycle for NeonCluster resources.
@@ -102,6 +111,14 @@ func (r *Operator) sync(ctx context.Context, name, namespace string) error {
 		return err
 	}
 
+	if err := r.copyControlPlaneCertSecret(ctx, nc, logger); err != nil {
+		return err
+	}
+
+	if err := r.copyControlPlanePublicKey(ctx, nc, logger); err != nil {
+		return err
+	}
+
 	return r.updateStorageBroker(ctx, nc, pf.storageBroker, logger)
 
 }
@@ -125,11 +142,43 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 		ps = ps.DeepCopy()
 	}
 
-	if !notFound && ps.Spec.ProfileRef != nil &&
-		ps.Spec.ProfileRef.Name == profile.Name &&
-		ps.Spec.ProfileRef.Namespace == profile.Namespace {
-		// No update needed
-		return nil
+	// Prepare the desired spec
+	desiredSpec := v1alpha1.PageServerSpec{
+		ProfileRef: &corev1.ObjectReference{
+			Name:      profile.Name,
+			Namespace: profile.Namespace,
+		},
+		ObjectStorage: nc.Spec.ObjectStorage,
+	}
+
+	// Add TLS secret reference if TLS is enabled
+	if controlplane.GetEnableTLS() {
+		desiredSpec.TLSSecretRef = &corev1.SecretReference{
+			Name:      controlPlaneDefaultSecretName,
+			Namespace: nc.Namespace,
+		}
+	}
+
+	// Add JWT public key secret reference if JWT is enabled
+	if controlplane.GetEnableJWT() {
+		desiredSpec.JwtPublicKeySecretRef = &corev1.SecretReference{
+			Name:      controlPlaneJWTSecretName,
+			Namespace: nc.Namespace,
+		}
+	}
+
+	// Calculate hash of desired spec
+	hash, err := k8sutils.CreateInputHash(metav1.ObjectMeta{}, desiredSpec)
+	if err != nil {
+		return fmt.Errorf("failed to create input hash for pageserver: %w", err)
+	}
+
+	// Check if update is needed
+	if !notFound {
+		if ps.Annotations != nil && ps.Annotations[k8sutils.InputHashAnnotationKey] == hash {
+			// No update needed
+			return nil
+		}
 	}
 
 	if notFound {
@@ -137,14 +186,11 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      psName,
 				Namespace: nc.Namespace,
-			},
-			Spec: v1alpha1.PageServerSpec{
-				ProfileRef: &corev1.ObjectReference{
-					Name:      profile.Name,
-					Namespace: profile.Namespace,
+				Annotations: map[string]string{
+					k8sutils.InputHashAnnotationKey: hash,
 				},
-				ObjectStorage: nc.Spec.ObjectStorage,
 			},
+			Spec: desiredSpec,
 		}
 
 		operator.UpdateObject(ps,
@@ -165,11 +211,11 @@ func (r *Operator) updatePageServer(ctx context.Context, nc *v1alpha1.NeonCluste
 		return nil
 	}
 
-	ps.Spec.ProfileRef = &corev1.ObjectReference{
-		Name:      profile.Name,
-		Namespace: profile.Namespace,
+	ps.Spec = desiredSpec
+	if ps.Annotations == nil {
+		ps.Annotations = make(map[string]string)
 	}
-	ps.Spec.ObjectStorage = nc.Spec.ObjectStorage
+	ps.Annotations[k8sutils.InputHashAnnotationKey] = hash
 
 	err = r.nclient.Update(ctx, ps)
 	if err != nil {
@@ -200,11 +246,26 @@ func (r *Operator) updateSafeKeeper(ctx context.Context, nc *v1alpha1.NeonCluste
 		sk = sk.DeepCopy()
 	}
 
-	if !notFound && sk.Spec.ProfileRef != nil &&
-		sk.Spec.ProfileRef.Name == profile.Name &&
-		sk.Spec.ProfileRef.Namespace == profile.Namespace {
-		// No update needed
-		return nil
+	// Prepare the desired spec
+	desiredSpec := v1alpha1.SafeKeeperSpec{
+		ProfileRef: &corev1.ObjectReference{
+			Name:      profile.Name,
+			Namespace: profile.Namespace,
+		},
+	}
+
+	// Calculate hash of desired spec
+	hash, err := k8sutils.CreateInputHash(metav1.ObjectMeta{}, desiredSpec)
+	if err != nil {
+		return fmt.Errorf("failed to create input hash for safekeeper: %w", err)
+	}
+
+	// Check if update is needed
+	if !notFound {
+		if sk.Annotations != nil && sk.Annotations[k8sutils.InputHashAnnotationKey] == hash {
+			// No update needed
+			return nil
+		}
 	}
 
 	if notFound {
@@ -212,13 +273,11 @@ func (r *Operator) updateSafeKeeper(ctx context.Context, nc *v1alpha1.NeonCluste
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      skname,
 				Namespace: nc.Namespace,
-			},
-			Spec: v1alpha1.SafeKeeperSpec{
-				ProfileRef: &corev1.ObjectReference{
-					Name:      profile.Name,
-					Namespace: profile.Namespace,
+				Annotations: map[string]string{
+					k8sutils.InputHashAnnotationKey: hash,
 				},
 			},
+			Spec: desiredSpec,
 		}
 
 		operator.UpdateObject(sk,
@@ -239,10 +298,11 @@ func (r *Operator) updateSafeKeeper(ctx context.Context, nc *v1alpha1.NeonCluste
 		return nil
 	}
 
-	sk.Spec.ProfileRef = &corev1.ObjectReference{
-		Name:      profile.Name,
-		Namespace: profile.Namespace,
+	sk.Spec = desiredSpec
+	if sk.Annotations == nil {
+		sk.Annotations = make(map[string]string)
 	}
+	sk.Annotations[k8sutils.InputHashAnnotationKey] = hash
 
 	err = r.nclient.Update(ctx, sk)
 	if err != nil {
@@ -273,11 +333,26 @@ func (r *Operator) updateStorageBroker(ctx context.Context, nc *v1alpha1.NeonClu
 		sb = sb.DeepCopy()
 	}
 
-	if !notFound && sb.Spec.ProfileRef != nil &&
-		sb.Spec.ProfileRef.Name == profile.Name &&
-		sb.Spec.ProfileRef.Namespace == profile.Namespace {
-		// No update needed
-		return nil
+	// Prepare the desired spec
+	desiredSpec := v1alpha1.StorageBrokerSpec{
+		ProfileRef: &corev1.ObjectReference{
+			Name:      profile.Name,
+			Namespace: profile.Namespace,
+		},
+	}
+
+	// Calculate hash of desired spec
+	hash, err := k8sutils.CreateInputHash(metav1.ObjectMeta{}, desiredSpec)
+	if err != nil {
+		return fmt.Errorf("failed to create input hash for storagebroker: %w", err)
+	}
+
+	// Check if update is needed
+	if !notFound {
+		if sb.Annotations != nil && sb.Annotations[k8sutils.InputHashAnnotationKey] == hash {
+			// No update needed
+			return nil
+		}
 	}
 
 	if notFound {
@@ -285,13 +360,11 @@ func (r *Operator) updateStorageBroker(ctx context.Context, nc *v1alpha1.NeonClu
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      sbname,
 				Namespace: nc.Namespace,
-			},
-			Spec: v1alpha1.StorageBrokerSpec{
-				ProfileRef: &corev1.ObjectReference{
-					Name:      profile.Name,
-					Namespace: profile.Namespace,
+				Annotations: map[string]string{
+					k8sutils.InputHashAnnotationKey: hash,
 				},
 			},
+			Spec: desiredSpec,
 		}
 
 		operator.UpdateObject(sb,
@@ -312,10 +385,11 @@ func (r *Operator) updateStorageBroker(ctx context.Context, nc *v1alpha1.NeonClu
 		return nil
 	}
 
-	sb.Spec.ProfileRef = &corev1.ObjectReference{
-		Name:      profile.Name,
-		Namespace: profile.Namespace,
+	sb.Spec = desiredSpec
+	if sb.Annotations == nil {
+		sb.Annotations = make(map[string]string)
 	}
+	sb.Annotations[k8sutils.InputHashAnnotationKey] = hash
 
 	err = r.nclient.Update(ctx, sb)
 	if err != nil {
@@ -324,5 +398,207 @@ func (r *Operator) updateStorageBroker(ctx context.Context, nc *v1alpha1.NeonClu
 
 	logger.Info("Updated storagebroker", "name", sb.Name, "namespace", sb.Namespace)
 
+	return nil
+}
+
+func (r *Operator) copyControlPlaneCertSecret(ctx context.Context, nc *v1alpha1.NeonCluster, logger *slog.Logger) error {
+	if !controlplane.GetEnableTLS() {
+		// TLS not enabled, nothing to do
+		return nil
+	}
+	const (
+		tlsCertKey     = "tls.crt"
+		tlsKeyKey      = "tls.key"
+		hashAnnotation = "neon.io/cert-hash"
+	)
+
+	secretName := controlPlaneDefaultSecretName
+
+	// Get the control plane namespace (operator namespace)
+	controlPlaneNamespace := k8sutils.GetOperatorNamespace()
+
+	// Get the control-plane-certs secret from control-plane namespace
+	sourceSecret, err := r.kclient.CoreV1().Secrets(controlPlaneNamespace).Get(ctx, secretName, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("Control plane cert secret not found, skipping copy", "namespace", controlPlaneNamespace, "secret", secretName)
+			return nil
+		}
+		return fmt.Errorf("failed to get control-plane cert secret: %w", err)
+	}
+
+	// Extract tls.crt and tls.key data
+	tlsCrtData, ok := sourceSecret.Data[tlsCertKey]
+	if !ok {
+		return fmt.Errorf("tls.crt key not found in %s/%s secret", controlPlaneNamespace, secretName)
+	}
+
+	tlsKeyData, ok := sourceSecret.Data[tlsKeyKey]
+	if !ok {
+		return fmt.Errorf("tls.key key not found in %s/%s secret", controlPlaneNamespace, secretName)
+	}
+
+	// Calculate hash of combined tls.crt and tls.key content
+	hash := sha256.Sum256(append(tlsCrtData, tlsKeyData...))
+	hashStr := hex.EncodeToString(hash[:])
+
+	// Try to get existing secret
+	existingSecret, err := r.kclient.CoreV1().Secrets(nc.Namespace).Get(ctx, secretName, metav1.GetOptions{})
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get destination secret: %w", err)
+		}
+
+		// Create new secret with hash annotation
+		newSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      secretName,
+				Namespace: nc.Namespace,
+				Annotations: map[string]string{
+					hashAnnotation: hashStr,
+				},
+			},
+			Type: corev1.SecretTypeOpaque,
+			Data: map[string][]byte{
+				tlsCertKey: tlsCrtData,
+				tlsKeyKey:  tlsKeyData,
+			},
+		}
+
+		_, err = r.kclient.CoreV1().Secrets(nc.Namespace).Create(ctx, newSecret, metav1.CreateOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to create control-plane cert secret: %w", err)
+		}
+
+		logger.Info("Created control-plane cert secret in neon cluster namespace", "namespace", nc.Namespace, "secret", secretName)
+		return nil
+	}
+
+	// Check if hash has changed
+	existingHash := ""
+	if existingSecret.Annotations != nil {
+		existingHash = existingSecret.Annotations[hashAnnotation]
+	}
+
+	if existingHash == hashStr {
+		logger.Debug("Control-plane cert secret is up to date, no update needed", "namespace", nc.Namespace, "secret", secretName)
+		return nil
+	}
+
+	// Update existing secret's tls.crt, tls.key and hash annotation
+	existingSecret = existingSecret.DeepCopy()
+	if existingSecret.Data == nil {
+		existingSecret.Data = make(map[string][]byte)
+	}
+	if existingSecret.Annotations == nil {
+		existingSecret.Annotations = make(map[string]string)
+	}
+
+	existingSecret.Data[tlsCertKey] = tlsCrtData
+	existingSecret.Data[tlsKeyKey] = tlsKeyData
+	existingSecret.Annotations[hashAnnotation] = hashStr
+
+	_, err = r.kclient.CoreV1().Secrets(nc.Namespace).Update(ctx, existingSecret, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update control-plane cert secret: %w", err)
+	}
+
+	logger.Info("Updated control-plane cert secret in neon cluster namespace", "namespace", nc.Namespace, "secret", secretName)
+	return nil
+}
+
+func (r *Operator) copyControlPlanePublicKey(ctx context.Context, nc *v1alpha1.NeonCluster, logger *slog.Logger) error {
+	if !controlplane.GetEnableJWT() {
+		// JWT not enabled, nothing to do
+		return nil
+	}
+	const (
+		jwtPublicKeyKey = "jwt.pub"
+		hashAnnotation  = "neon.io/jwt-public-key-hash"
+	)
+
+	// Get the control plane namespace (operator namespace)
+	controlPlaneNamespace := k8sutils.GetOperatorNamespace()
+
+	// Get the control-plane-jwt-keys secret from control-plane namespace
+	sourceSecret, err := r.kclient.CoreV1().Secrets(controlPlaneNamespace).Get(ctx, controlPlaneJWTSecretName, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("Control plane JWT secret not found, skipping copy", "namespace", controlPlaneNamespace, "secret", controlPlaneJWTSecretName)
+			return nil
+		}
+		return fmt.Errorf("failed to get control-plane JWT secret: %w", err)
+	}
+
+	// Extract jwt.pub data
+	jwtPubData, ok := sourceSecret.Data[jwtPublicKeyKey]
+	if !ok {
+		return fmt.Errorf("jwt.pub key not found in %s/%s secret", controlPlaneNamespace, controlPlaneJWTSecretName)
+	}
+
+	// Calculate hash of jwt.pub content
+	hash := sha256.Sum256(jwtPubData)
+	hashStr := hex.EncodeToString(hash[:])
+
+	// Try to get existing secret
+	existingSecret, err := r.kclient.CoreV1().Secrets(nc.Namespace).Get(ctx, controlPlaneJWTSecretName, metav1.GetOptions{})
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get destination JWT secret: %w", err)
+		}
+
+		// Create new secret with hash annotation
+		newSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      controlPlaneJWTSecretName,
+				Namespace: nc.Namespace,
+				Annotations: map[string]string{
+					hashAnnotation: hashStr,
+				},
+			},
+			Type: corev1.SecretTypeOpaque,
+			Data: map[string][]byte{
+				jwtPublicKeyKey: jwtPubData,
+			},
+		}
+
+		_, err = r.kclient.CoreV1().Secrets(nc.Namespace).Create(ctx, newSecret, metav1.CreateOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to create control-plane JWT secret: %w", err)
+		}
+
+		logger.Info("Created control-plane JWT secret in neon cluster namespace", "namespace", nc.Namespace, "secret", controlPlaneJWTSecretName)
+		return nil
+	}
+
+	// Check if hash has changed
+	existingHash := ""
+	if existingSecret.Annotations != nil {
+		existingHash = existingSecret.Annotations[hashAnnotation]
+	}
+
+	if existingHash == hashStr {
+		logger.Debug("Control-plane JWT secret is up to date, no update needed", "namespace", nc.Namespace, "secret", controlPlaneJWTSecretName)
+		return nil
+	}
+
+	// Update existing secret's jwt.pub and hash annotation
+	existingSecret = existingSecret.DeepCopy()
+	if existingSecret.Data == nil {
+		existingSecret.Data = make(map[string][]byte)
+	}
+	if existingSecret.Annotations == nil {
+		existingSecret.Annotations = make(map[string]string)
+	}
+
+	existingSecret.Data[jwtPublicKeyKey] = jwtPubData
+	existingSecret.Annotations[hashAnnotation] = hashStr
+
+	_, err = r.kclient.CoreV1().Secrets(nc.Namespace).Update(ctx, existingSecret, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update control-plane JWT secret: %w", err)
+	}
+
+	logger.Info("Updated control-plane JWT secret in neon cluster namespace", "namespace", nc.Namespace, "secret", controlPlaneJWTSecretName)
 	return nil
 }

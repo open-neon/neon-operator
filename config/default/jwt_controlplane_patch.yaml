@@ -1,0 +1,28 @@
+# This patch adds the args, volumes, and ports to allow the manager to use JWT authentication keys.
+
+# Add the volumeMount for the JWT keys
+- op: add
+  path: /spec/template/spec/containers/0/volumeMounts/-
+  value:
+    mountPath: /etc/control-plane-jwt
+    name: control-plane-jwt-keys
+    readOnly: true
+
+# Add the --control-plane-enable-jwt argument
+- op: add
+  path: /spec/template/spec/containers/0/args/-
+  value: --control-plane-enable-jwt
+
+# Add the JWT keys volume configuration
+- op: add
+  path: /spec/template/spec/volumes/-
+  value:
+    name: control-plane-jwt-keys
+    secret:
+      secretName: control-plane-jwt-keys
+      optional: true
+      items:
+        - key: jwt.pub
+          path: jwt.pub
+        - key: jwt.key
+          path: jwt.key

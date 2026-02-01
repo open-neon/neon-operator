@@ -43,7 +43,11 @@ patches:
   target:
     kind: Deployment
 # [CONTROL-PLANE] The following patch will enable the control plane server with TLS support.
-- path: cert_controlplane_manager_patch.yaml
+- path: cert_controlplane_patch.yaml
+  target:
+    kind: Deployment
+# [CONTROL-PLANE-JWT] The following patch will enable JWT authentication for the control plane.
+- path: jwt_controlplane_patch.yaml
   target:
     kind: Deployment
 

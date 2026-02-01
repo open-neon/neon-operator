@@ -13,15 +13,6 @@
   path: /spec/template/spec/containers/0/args/-
   value: --control-plane-enable-tls
 
-# Add the --control-plane-cert-path argument
-- op: add
-  path: /spec/template/spec/containers/0/args/-
-  value: --control-plane-cert-path=/etc/control-plane-certs
-
-# Add the --control-plane-cert-key-path argument
-- op: add
-  path: /spec/template/spec/containers/0/args/-
-  value: --control-plane-cert-key-path=/etc/control-plane-certs
 
 # Add the control-plane certs volume configuration
 - op: add

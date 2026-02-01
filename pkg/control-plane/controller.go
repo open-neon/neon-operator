@@ -14,30 +14,42 @@ import (
 
 // ControlPlaneServer represents the control plane HTTP server
 type ControlPlaneServer struct {
-	mux     *http.ServeMux
-	logger  *slog.Logger
-	server  *http.Server
-	nclient client.Client
-	kclient kubernetes.Interface
-	scheme  *runtime.Scheme
+	mux        *http.ServeMux
+	logger     *slog.Logger
+	server     *http.Server
+	nclient    client.Client
+	kclient    kubernetes.Interface
+	scheme     *runtime.Scheme
+	jwtManager *JWTManager
 }
 
 const (
-	ServiceName    = "control-plane"
-	controllerName = "control-plane"
-	httpPort       = ":9090"
-	httpsPort      = ":9443"
+	ServiceName       = "control-plane"
+	controllerName    = "control-plane"
+	httpPort          = ":9090"
+	httpsPort         = ":9443"
+	certPath          = "/etc/control-plane/certs/tls.crt"
+	certKeyPath       = "/etc/control-plane/certs/tls.key"
+	jwtPublicKeyPath  = "/etc/control-plane-jwt/jwt.pub"
+	jwtPrivateKeyPath = "/etc/control-plane-jwt/jwt.key"
 )
 
 var (
 	enableTLS = false
+	enableJWT = false
 	protocol  = "http"
 	port      = httpPort
+	jwtToken  = ""
 )
 
 // GetEnableTLS returns whether TLS is enabled for the control plane server
 func GetEnableTLS() bool {
 	return enableTLS
+}
+
+// GetEnableJWT returns whether JWT authentication is enabled for the control plane server
+func GetEnableJWT() bool {
+	return enableJWT
 }
 
 // GetProtocol returns the protocol (http or https) for the control plane server
@@ -48,6 +60,11 @@ func GetProtocol() string {
 // GetPort returns the port for the control plane server
 func GetPort() string {
 	return port
+}
+
+// GetJWTToken returns the JWT token for the control plane server
+func GetJWTToken() string {
+	return jwtToken
 }
 
 // setTLSConfig is an internal function to set TLS configuration
@@ -61,13 +78,14 @@ func setTLSConfig(enabled bool, proto, p string) {
 // The port is automatically selected based on enableTLS flag:
 // - :9090 for HTTP (when TLS is disabled)
 // - :9443 for HTTPS (when TLS is enabled)
-func NewControlPlaneServer(enableTLS bool, certPath, certKey string, logger *slog.Logger, nclient client.Client, config *rest.Config, scheme *runtime.Scheme) (*ControlPlaneServer, error) {
+func NewControlPlaneServer(enableTLSFlag bool, enableJWTFlag bool, logger *slog.Logger, nclient client.Client, config *rest.Config, scheme *runtime.Scheme) (*ControlPlaneServer, error) {
 	// Select port based on TLS setting
 	addr := httpPort
-	if enableTLS {
+	if enableTLSFlag {
 		setTLSConfig(true, "https", httpsPort)
 		addr = httpsPort
 	}
+	enableJWT = enableJWTFlag
 	logger = logger.With("component", controllerName)
 
 	// Create kubernetes clientset for direct client-go operations
@@ -95,7 +113,7 @@ func NewControlPlaneServer(enableTLS bool, certPath, certKey string, logger *slo
 	if enableTLS {
 		// Load TLS certificate and configure in TLSConfig
 		// When TLSConfig.Certificates is set, ListenAndServeTLS will use these instead of loading from files
-		cert, err := tls.LoadX509KeyPair(certPath, certKey)
+		cert, err := tls.LoadX509KeyPair(certPath, certKeyPath)
 		if err != nil {
 			logger.Warn("failed to load TLS certificate, falling back to HTTP", "error", err)
 			// Disable TLS and use HTTP instead
@@ -106,6 +124,27 @@ func NewControlPlaneServer(enableTLS bool, certPath, certKey string, logger *slo
 				Certificates: []tls.Certificate{cert},
 			}
 			logger.Info("TLS enabled for control plane server", "certPath", certPath)
+		}
+	}
+
+	// Initialize JWT if enabled
+	if enableJWT {
+		jwtMgr, err := NewJWTManager(logger)
+		if err != nil {
+			logger.Warn("failed to initialize JWT manager, disabling JWT authentication", "error", err)
+			enableJWT = false
+		} else {
+			// Store the JWT manager in the server instance
+			cps.jwtManager = jwtMgr
+			// Generate JWT token with no expiry
+			token, err := jwtMgr.GenerateToken("control-plane", nil)
+			if err != nil {
+				logger.Warn("failed to generate JWT token, disabling JWT authentication", "error", err)
+				enableJWT = false
+			} else {
+				jwtToken = token
+				logger.Info("JWT authentication enabled for control plane server")
+			}
 		}
 	}
 

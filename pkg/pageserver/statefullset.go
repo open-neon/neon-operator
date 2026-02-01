@@ -25,6 +25,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	TLSCertPath   = "/etc/pageserver/certs/tls.crt"
+	TLSKeyPath    = "/etc/pageserver/certs/tls.key"
+	tlsVolumeName = "tls-certs"
+	PublicKeyPath = "/etc/pageserver/certs/jwt.pub"
+)
+
 // makePageServerStatefulSet creates a StatefulSet for the Page Server component
 func makePageServerStatefulSet(ps *v1alpha1.PageServer, spec *appsv1.StatefulSetSpec) (*appsv1.StatefulSet, error) {
 
@@ -40,7 +47,8 @@ func makePageServerStatefulSet(ps *v1alpha1.PageServer, spec *appsv1.StatefulSet
 	return statefulSet, nil
 }
 
-func makePageServerStatefulSetSpec(psName string, psp *v1alpha1.PageServerProfile) (*appsv1.StatefulSetSpec, error) {
+func makePageServerStatefulSetSpec(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerProfile) (*appsv1.StatefulSetSpec, error) {
+	psName := ps.GetName()
 	cpf := psp.Spec.CommonFields
 
 	image := k8sutils.NeonDefaultImage
@@ -83,6 +91,24 @@ func makePageServerStatefulSetSpec(psName string, psp *v1alpha1.PageServerProfil
 		Name:      "config",
 		MountPath: "/data/.neon",
 	})
+
+	// Add TLS secret volume mount
+	if ps.Spec.TLSSecretRef != nil {
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      tlsVolumeName,
+			MountPath: "/etc/pageserver/certs",
+			ReadOnly:  true,
+		})
+	}
+
+	// Add JWT public key secret volume mount
+	if ps.Spec.JwtPublicKeySecretRef != nil {
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      "jwt-public-key",
+			MountPath: "/etc/pageserver/certs",
+			ReadOnly:  true,
+		})
+	}
 
 	// Init container to generate identity.toml with pod name as id
 	initContainer := corev1.Container{
@@ -147,12 +173,36 @@ func makePageServerStatefulSetSpec(psName string, psp *v1alpha1.PageServerProfil
 		},
 	})
 
+	// Add TLS secret volume if TLS is enabled and secret is referenced
+	if ps.Spec.TLSSecretRef != nil {
+		podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
+			Name: tlsVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: ps.Spec.TLSSecretRef.Name,
+				},
+			},
+		})
+	}
+
+	// Add JWT public key secret volume if JWT is enabled and secret is referenced
+	if ps.Spec.JwtPublicKeySecretRef != nil {
+		podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
+			Name: "jwt-public-key",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: ps.Spec.JwtPublicKeySecretRef.Name,
+				},
+			},
+		})
+	}
+
 	spec := appsv1.StatefulSetSpec{
 		Replicas: &replicas,
 		Selector: &metav1.LabelSelector{
 			MatchLabels: labels,
 		},
-		ServiceName:                          "pageserver",
+		ServiceName:                          psName,
 		Template:                             podTemplateSpec,
 		PersistentVolumeClaimRetentionPolicy: psp.Spec.PersistentVolumeClaimRetentionPolicy,
 	}
@@ -183,7 +233,7 @@ func makePageServerStatefulSetSpec(psName string, psp *v1alpha1.PageServerProfil
 func makePageServerHeadlessService(ps *v1alpha1.PageServer) *corev1.Service {
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pageserver",
+			Name:      ps.GetName(),
 			Namespace: ps.Namespace,
 			Labels: map[string]string{
 				"app":       "pageserver",
@@ -204,6 +254,11 @@ func makePageServerHeadlessService(ps *v1alpha1.PageServer) *corev1.Service {
 				{
 					Name:     "http",
 					Port:     9898,
+					Protocol: corev1.ProtocolTCP,
+				},
+				{
+					Name:     "https",
+					Port:     9899,
 					Protocol: corev1.ProtocolTCP,
 				},
 			},
