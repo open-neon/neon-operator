@@ -338,6 +338,7 @@ func (r *Operator) copyControlPlaneCertSecret(ctx context.Context, nc *v1alpha1.
 	const (
 		secretName     = "control-plane-certs"
 		tlsCertKey     = "tls.crt"
+		tlsKeyKey      = "tls.key"
 		hashAnnotation = "neon.io/cert-hash"
 	)
 
@@ -354,14 +355,19 @@ func (r *Operator) copyControlPlaneCertSecret(ctx context.Context, nc *v1alpha1.
 		return fmt.Errorf("failed to get control-plane cert secret: %w", err)
 	}
 
-	// Extract tls.crt data
+	// Extract tls.crt and tls.key data
 	tlsCrtData, ok := sourceSecret.Data[tlsCertKey]
 	if !ok {
 		return fmt.Errorf("tls.crt key not found in %s/%s secret", controlPlaneNamespace, secretName)
 	}
 
-	// Calculate hash of tls.crt content
-	hash := sha256.Sum256(tlsCrtData)
+	tlsKeyData, ok := sourceSecret.Data[tlsKeyKey]
+	if !ok {
+		return fmt.Errorf("tls.key key not found in %s/%s secret", controlPlaneNamespace, secretName)
+	}
+
+	// Calculate hash of combined tls.crt and tls.key content
+	hash := sha256.Sum256(append(tlsCrtData, tlsKeyData...))
 	hashStr := hex.EncodeToString(hash[:])
 
 	// Try to get existing secret
@@ -383,6 +389,7 @@ func (r *Operator) copyControlPlaneCertSecret(ctx context.Context, nc *v1alpha1.
 			Type: corev1.SecretTypeOpaque,
 			Data: map[string][]byte{
 				tlsCertKey: tlsCrtData,
+				tlsKeyKey:  tlsKeyData,
 			},
 		}
 
@@ -406,7 +413,7 @@ func (r *Operator) copyControlPlaneCertSecret(ctx context.Context, nc *v1alpha1.
 		return nil
 	}
 
-	// Update existing secret's tls.crt and hash annotation
+	// Update existing secret's tls.crt, tls.key and hash annotation
 	existingSecret = existingSecret.DeepCopy()
 	if existingSecret.Data == nil {
 		existingSecret.Data = make(map[string][]byte)
@@ -416,6 +423,7 @@ func (r *Operator) copyControlPlaneCertSecret(ctx context.Context, nc *v1alpha1.
 	}
 
 	existingSecret.Data[tlsCertKey] = tlsCrtData
+	existingSecret.Data[tlsKeyKey] = tlsKeyData
 	existingSecret.Annotations[hashAnnotation] = hashStr
 
 	_, err = r.kclient.CoreV1().Secrets(nc.Namespace).Update(ctx, existingSecret, metav1.UpdateOptions{})
