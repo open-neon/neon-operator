@@ -18,6 +18,8 @@ package neoncluster
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 
@@ -334,8 +336,9 @@ func (r *Operator) updateStorageBroker(ctx context.Context, nc *v1alpha1.NeonClu
 
 func (r *Operator) copyControlPlaneCertSecret(ctx context.Context, nc *v1alpha1.NeonCluster, logger *slog.Logger) error {
 	const (
-		secretName = "control-plane-certs"
-		tlsCertKey = "tls.crt"
+		secretName     = "control-plane-certs"
+		tlsCertKey     = "tls.crt"
+		hashAnnotation = "neon.io/cert-hash"
 	)
 
 	// Get the control plane namespace (operator namespace)
@@ -357,17 +360,9 @@ func (r *Operator) copyControlPlaneCertSecret(ctx context.Context, nc *v1alpha1.
 		return fmt.Errorf("tls.crt key not found in %s/%s secret", controlPlaneNamespace, secretName)
 	}
 
-	// Create or update secret in neon cluster namespace
-	destSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
-			Namespace: nc.Namespace,
-		},
-		Type: corev1.SecretTypeOpaque,
-		Data: map[string][]byte{
-			tlsCertKey: tlsCrtData,
-		},
-	}
+	// Calculate hash of tls.crt content
+	hash := sha256.Sum256(tlsCrtData)
+	hashStr := hex.EncodeToString(hash[:])
 
 	// Try to get existing secret
 	existingSecret, err := r.kclient.CoreV1().Secrets(nc.Namespace).Get(ctx, secretName, metav1.GetOptions{})
@@ -376,8 +371,22 @@ func (r *Operator) copyControlPlaneCertSecret(ctx context.Context, nc *v1alpha1.
 			return fmt.Errorf("failed to get destination secret: %w", err)
 		}
 
-		// Create new secret
-		_, err = r.kclient.CoreV1().Secrets(nc.Namespace).Create(ctx, destSecret, metav1.CreateOptions{})
+		// Create new secret with hash annotation
+		newSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      secretName,
+				Namespace: nc.Namespace,
+				Annotations: map[string]string{
+					hashAnnotation: hashStr,
+				},
+			},
+			Type: corev1.SecretTypeOpaque,
+			Data: map[string][]byte{
+				tlsCertKey: tlsCrtData,
+			},
+		}
+
+		_, err = r.kclient.CoreV1().Secrets(nc.Namespace).Create(ctx, newSecret, metav1.CreateOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to create control-plane cert secret: %w", err)
 		}
@@ -386,12 +395,28 @@ func (r *Operator) copyControlPlaneCertSecret(ctx context.Context, nc *v1alpha1.
 		return nil
 	}
 
-	// Update existing secret's tls.crt
+	// Check if hash has changed
+	existingHash := ""
+	if existingSecret.Annotations != nil {
+		existingHash = existingSecret.Annotations[hashAnnotation]
+	}
+
+	if existingHash == hashStr {
+		logger.Debug("Control-plane cert secret is up to date, no update needed", "namespace", nc.Namespace, "secret", secretName)
+		return nil
+	}
+
+	// Update existing secret's tls.crt and hash annotation
 	existingSecret = existingSecret.DeepCopy()
 	if existingSecret.Data == nil {
 		existingSecret.Data = make(map[string][]byte)
 	}
+	if existingSecret.Annotations == nil {
+		existingSecret.Annotations = make(map[string]string)
+	}
+
 	existingSecret.Data[tlsCertKey] = tlsCrtData
+	existingSecret.Annotations[hashAnnotation] = hashStr
 
 	_, err = r.kclient.CoreV1().Secrets(nc.Namespace).Update(ctx, existingSecret, metav1.UpdateOptions{})
 	if err != nil {
