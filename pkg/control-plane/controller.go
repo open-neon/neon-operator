@@ -14,12 +14,13 @@ import (
 
 // ControlPlaneServer represents the control plane HTTP server
 type ControlPlaneServer struct {
-	mux     *http.ServeMux
-	logger  *slog.Logger
-	server  *http.Server
-	nclient client.Client
-	kclient kubernetes.Interface
-	scheme  *runtime.Scheme
+	mux        *http.ServeMux
+	logger     *slog.Logger
+	server     *http.Server
+	nclient    client.Client
+	kclient    kubernetes.Interface
+	scheme     *runtime.Scheme
+	jwtManager *JWTManager
 }
 
 const (
@@ -133,6 +134,8 @@ func NewControlPlaneServer(enableTLSFlag bool, enableJWTFlag bool, logger *slog.
 			logger.Warn("failed to initialize JWT manager, disabling JWT authentication", "error", err)
 			enableJWT = false
 		} else {
+			// Store the JWT manager in the server instance
+			cps.jwtManager = jwtMgr
 			// Generate JWT token with no expiry
 			token, err := jwtMgr.GenerateToken("control-plane", nil)
 			if err != nil {
