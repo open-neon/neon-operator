@@ -272,14 +272,19 @@ func generatePageServerToml(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerPro
 	sb.WriteString(fmt.Sprintf("control_plane_api = '%s'\n", fmt.Sprintf("%s://%s.%s.svc.cluster.local:%s", controlplane.GetProtocol(), controlplane.ServiceName, k8sutils.GetOperatorNamespace(), controlplane.GetPort())))
 	sb.WriteString(fmt.Sprintf("control_plane_emergency_mode = '%t'\n", psp.Spec.ControlPlane.EmergencyMode))
 
+	if controlplane.GetEnableTLS() {
+		sb.WriteString(fmt.Sprintf("ssl_ca_certs = %s\n", TLSCertPath))
+	}
+
 	neonClusterName := ps.Labels["neoncluster"]
 	sb.WriteString(fmt.Sprintf("broker_endpoint = '%s'\n", fmt.Sprintf("http://%s-broker.%s.svc.cluster.local:50051", neonClusterName, ps.GetNamespace())))
 	// Network settings
 	sb.WriteString(fmt.Sprintf("listen_pg_addr = '%s'\n", "0.0.0.0:6400"))
 	sb.WriteString(fmt.Sprintf("http_listen_addr = '%s'\n", "0.0.0.0:9898"))
-
+    sb.WriteString(fmt.Sprintf("http-auth-type = '%s'\n", psp.Spec.Security.AuthType))
+    
 	// TLS settings
-	if psp.Spec.Security.EnableTLS {
+	if psp.Spec.Security.EnableTLS && ps.Spec.TLSSecretRef != nil {
 		sb.WriteString(fmt.Sprintf("listen_https_addr = '%s'\n", "0.0.0.0:9899"))
 		sb.WriteString(fmt.Sprintf("ssl_cert_file = '%s'\n", TLSCertPath))
 		sb.WriteString(fmt.Sprintf("ssl_key_file = '%s'\n", TLSKeyPath))
@@ -300,6 +305,9 @@ func generatePageServerToml(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerPro
 	sb.WriteString(fmt.Sprintf("virtual_file_io_mode = %s\n", psp.Spec.Performance.IOMode))
 
 	sb.WriteString(fmt.Sprintf("log_level = '%s'\n", strings.ToLower(psp.Spec.Observability.LogLevel)))
+
+	sb.WriteString(fmt.Sprintf("pg_auth_type = '%s'\n", psp.Spec.Security.AuthType))
+	sb.WriteString(fmt.Sprintf("grpc_auth_type = '%s'\n", psp.Spec.Security.AuthType))
 
 	// ssl_ca_certs = "/path/to/control-plane-selfsigned-cert.pem"
     // control_plane_api_token = "eyJ0eXAi..."
