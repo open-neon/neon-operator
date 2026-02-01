@@ -31,6 +31,7 @@ import (
 
 	"github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
 	corev1alpha1 "github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	k8sutils "github.com/stateless-pg/stateless-pg/pkg/k8s-utils"
 	"github.com/stateless-pg/stateless-pg/pkg/operator"
 )
 
@@ -99,6 +100,10 @@ func (r *Operator) sync(ctx context.Context, name, namespace string) error {
 	}
 
 	if err := r.updateSafeKeeper(ctx, nc, pf.safeKeeper, logger); err != nil {
+		return err
+	}
+
+	if err := r.copyControlPlaneCertSecret(ctx, nc, logger); err != nil {
 		return err
 	}
 
@@ -324,5 +329,75 @@ func (r *Operator) updateStorageBroker(ctx context.Context, nc *v1alpha1.NeonClu
 
 	logger.Info("Updated storagebroker", "name", sb.Name, "namespace", sb.Namespace)
 
+	return nil
+}
+
+func (r *Operator) copyControlPlaneCertSecret(ctx context.Context, nc *v1alpha1.NeonCluster, logger *slog.Logger) error {
+	const (
+		secretName = "control-plane-certs"
+		tlsCertKey = "tls.crt"
+	)
+
+	// Get the control plane namespace (operator namespace)
+	controlPlaneNamespace := k8sutils.GetOperatorNamespace()
+
+	// Get the control-plane-certs secret from control-plane namespace
+	sourceSecret, err := r.kclient.CoreV1().Secrets(controlPlaneNamespace).Get(ctx, secretName, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Warn("Control plane cert secret not found, skipping copy", "namespace", controlPlaneNamespace, "secret", secretName)
+			return nil
+		}
+		return fmt.Errorf("failed to get control-plane cert secret: %w", err)
+	}
+
+	// Extract tls.crt data
+	tlsCrtData, ok := sourceSecret.Data[tlsCertKey]
+	if !ok {
+		return fmt.Errorf("tls.crt key not found in %s/%s secret", controlPlaneNamespace, secretName)
+	}
+
+	// Create or update secret in neon cluster namespace
+	destSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: nc.Namespace,
+		},
+		Type: corev1.SecretTypeOpaque,
+		Data: map[string][]byte{
+			tlsCertKey: tlsCrtData,
+		},
+	}
+
+	// Try to get existing secret
+	existingSecret, err := r.kclient.CoreV1().Secrets(nc.Namespace).Get(ctx, secretName, metav1.GetOptions{})
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get destination secret: %w", err)
+		}
+
+		// Create new secret
+		_, err = r.kclient.CoreV1().Secrets(nc.Namespace).Create(ctx, destSecret, metav1.CreateOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to create control-plane cert secret: %w", err)
+		}
+
+		logger.Info("Created control-plane cert secret in neon cluster namespace", "namespace", nc.Namespace, "secret", secretName)
+		return nil
+	}
+
+	// Update existing secret's tls.crt
+	existingSecret = existingSecret.DeepCopy()
+	if existingSecret.Data == nil {
+		existingSecret.Data = make(map[string][]byte)
+	}
+	existingSecret.Data[tlsCertKey] = tlsCrtData
+
+	_, err = r.kclient.CoreV1().Secrets(nc.Namespace).Update(ctx, existingSecret, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update control-plane cert secret: %w", err)
+	}
+
+	logger.Info("Updated control-plane cert secret in neon cluster namespace", "namespace", nc.Namespace, "secret", secretName)
 	return nil
 }
