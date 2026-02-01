@@ -36,6 +36,11 @@ import (
 	k8sutils "github.com/stateless-pg/stateless-pg/pkg/k8s-utils"
 )
 
+const (
+	jwtAuth = "NeonJWT"
+	noAuth  = "Trust"
+)
+
 // Operator manages lifecycle for PageServer resources.
 type Operator struct {
 	nclient client.Client
@@ -281,8 +286,13 @@ func generatePageServerToml(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerPro
 	// Network settings
 	sb.WriteString(fmt.Sprintf("listen_pg_addr = '%s'\n", "0.0.0.0:6400"))
 	sb.WriteString(fmt.Sprintf("http_listen_addr = '%s'\n", "0.0.0.0:9898"))
-    sb.WriteString(fmt.Sprintf("http-auth-type = '%s'\n", psp.Spec.Security.AuthType))
-    
+
+	if controlplane.GetJWTToken() != "" {
+		sb.WriteString(fmt.Sprintf("http_auth_type = '%s'\n", jwtAuth))
+	} else {
+		sb.WriteString(fmt.Sprintf("http_auth_type = '%s'\n", noAuth))
+	}
+
 	// TLS settings
 	if psp.Spec.Security.EnableTLS && ps.Spec.TLSSecretRef != nil {
 		sb.WriteString(fmt.Sprintf("listen_https_addr = '%s'\n", "0.0.0.0:9899"))
@@ -316,14 +326,6 @@ func generatePageServerToml(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerPro
 	if controlplane.GetEnableJWT() {
 		sb.WriteString(fmt.Sprintf("auth_validation_public_key_path = '%s'\n", PublicKeyPath))
 	}
-
-	// ssl_ca_certs = "/path/to/control-plane-selfsigned-cert.pem"
-    // control_plane_api_token = "eyJ0eXAi..."
-
-   // http_auth_type = "NeonJWT | Trust"       # Storage controller must send JWT
-   // pg_auth_type = "NeonJWT"          # Compute nodes must send JWT
-   // grpc_auth_type = "NeonJWT"        # Storage controller gRPC must use JWT
-   // auth_validation_public_key_path = "/etc/neon/auth_public_key.pem"
 
 	return sb.String()
 }

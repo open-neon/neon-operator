@@ -24,14 +24,14 @@ type ControlPlaneServer struct {
 }
 
 const (
-	ServiceName         = "control-plane"
-	controllerName      = "control-plane"
-	httpPort            = ":9090"
-	httpsPort           = ":9443"
-	certPath            = "/etc/control-plane/certs/tls.crt"
-	certKeyPath         = "/etc/control-plane/certs/tls.key"
-	jwtPublicKeyPath    = "/etc/control-plane-jwt/jwt.pub"
-	jwtPrivateKeyPath   = "/etc/control-plane-jwt/jwt.key"
+	ServiceName       = "control-plane"
+	controllerName    = "control-plane"
+	httpPort          = ":9090"
+	httpsPort         = ":9443"
+	certPath          = "/etc/control-plane/certs/tls.crt"
+	certKeyPath       = "/etc/control-plane/certs/tls.key"
+	jwtPublicKeyPath  = "/etc/control-plane-jwt/jwt.pub"
+	jwtPrivateKeyPath = "/etc/control-plane-jwt/jwt.key"
 )
 
 var (
@@ -39,7 +39,7 @@ var (
 	enableJWT = false
 	protocol  = "http"
 	port      = httpPort
-	jwtToken = ""
+	jwtToken  = ""
 )
 
 // GetEnableTLS returns whether TLS is enabled for the control plane server
