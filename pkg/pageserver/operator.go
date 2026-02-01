@@ -309,6 +309,14 @@ func generatePageServerToml(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerPro
 	sb.WriteString(fmt.Sprintf("pg_auth_type = '%s'\n", psp.Spec.Security.AuthType))
 	sb.WriteString(fmt.Sprintf("grpc_auth_type = '%s'\n", psp.Spec.Security.AuthType))
 
+	if controlplane.GetJWTToken() != "" {
+		sb.WriteString(fmt.Sprintf("control_plane_api_token = '%s'\n", controlplane.GetJWTToken()))
+	}
+
+	if controlplane.GetEnableJWT() {
+		sb.WriteString(fmt.Sprintf("auth_validation_public_key_path = '%s'\n", PublicKeyPath))
+	}
+
 	// ssl_ca_certs = "/path/to/control-plane-selfsigned-cert.pem"
     // control_plane_api_token = "eyJ0eXAi..."
 

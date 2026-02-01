@@ -29,6 +29,7 @@ const (
 	TLSCertPath   = "/etc/pageserver/certs/tls.crt"
 	TLSKeyPath    = "/etc/pageserver/certs/tls.key"
 	tlsVolumeName = "tls-certs"
+	PublicKeyPath = "/etc/pageserver/certs/jwt.pub"
 )
 
 // makePageServerStatefulSet creates a StatefulSet for the Page Server component
@@ -91,10 +92,19 @@ func makePageServerStatefulSetSpec(ps *v1alpha1.PageServer, psp *v1alpha1.PageSe
 		MountPath: "/data/.neon",
 	})
 
-	// Add TLS secret volume mount 
+	// Add TLS secret volume mount
 	if ps.Spec.TLSSecretRef != nil {
 		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
 			Name:      tlsVolumeName,
+			MountPath: "/etc/pageserver/certs",
+			ReadOnly:  true,
+		})
+	}
+
+	// Add JWT public key secret volume mount
+	if ps.Spec.JwtPublicKeySecretRef != nil {
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      "jwt-public-key",
 			MountPath: "/etc/pageserver/certs",
 			ReadOnly:  true,
 		})
@@ -170,6 +180,18 @@ func makePageServerStatefulSetSpec(ps *v1alpha1.PageServer, psp *v1alpha1.PageSe
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: ps.Spec.TLSSecretRef.Name,
+				},
+			},
+		})
+	}
+
+	// Add JWT public key secret volume if JWT is enabled and secret is referenced
+	if ps.Spec.JwtPublicKeySecretRef != nil {
+		podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
+			Name: "jwt-public-key",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: ps.Spec.JwtPublicKeySecretRef.Name,
 				},
 			},
 		})
