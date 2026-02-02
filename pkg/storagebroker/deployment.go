@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	controlplane "github.com/stateless-pg/stateless-pg/pkg/control-plane"
 	"github.com/stateless-pg/stateless-pg/pkg/operator"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -81,7 +82,7 @@ func makeStorageBrokerDeploymentSpec(sb *v1alpha1.StorageBroker, sbp *v1alpha1.S
 		args = append(args, fmt.Sprintf("--ssl-cert-reload-period=%s", *sbp.Spec.SSLCertReloadPeriod))
 	}
 
-	if sbp.Spec.EnableTLS {
+	if sbp.Spec.EnableTLS && controlplane.GetEnableTLS() && sb.Spec.TLSSecretRef != nil {
 		args = append(args, "--listen-https-addr=0.0.0.0:50052")
 		args = append(args, fmt.Sprintf("--ssl-cert-file=%s", TLSCertPath))
 		args = append(args, fmt.Sprintf("--ssl-key-file=%s", TLSKeyPath))
