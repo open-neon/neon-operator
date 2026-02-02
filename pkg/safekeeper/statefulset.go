@@ -28,7 +28,12 @@ import (
 )
 
 const (
-	NeonDefaultImage = "ghcr.io/neondatabase/neon:latest"
+	NeonDefaultImage  = "ghcr.io/neondatabase/neon:latest"
+	TLSCertPath       = "/etc/safekeeper/certs/tls.crt"
+	TLSKeyPath        = "/etc/safekeeper/certs/tls.key"
+	tlsVolumeName     = "tls-certs"
+	PublicKeyPath     = "/etc/safekeeper/certs/jwt.pub"
+	jwtVolumeNameName = "jwt-public-key"
 )
 
 // buildSafeKeeperArgs builds the command-line arguments for the safekeeper process
@@ -377,6 +382,24 @@ func makeSafeKeeperStatefulSetSpec(sk *v1alpha1.SafeKeeper, skp *v1alpha1.SafeKe
 		})
 	}
 
+	// Add TLS secret volume mount
+	if sk.Spec.TLSSecretRef != nil {
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      tlsVolumeName,
+			MountPath: "/etc/safekeeper/certs",
+			ReadOnly:  true,
+		})
+	}
+
+	// Add JWT public key secret volume mount
+	if sk.Spec.JwtPublicKeySecretRef != nil {
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      jwtVolumeNameName,
+			MountPath: "/etc/safekeeper/certs",
+			ReadOnly:  true,
+		})
+	}
+
 	// Init container to extract pod ordinal and configure node ID
 	initContainers := []corev1.Container{
 		{
@@ -457,6 +480,30 @@ echo "Pod: $POD_NAME, Ordinal: $ORDINAL" >&2`,
 							Path: "service-account.json",
 						},
 					},
+				},
+			},
+		})
+	}
+
+	// Add TLS secret volume if TLS is enabled and secret is referenced
+	if sk.Spec.TLSSecretRef != nil {
+		podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
+			Name: tlsVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: sk.Spec.TLSSecretRef.Name,
+				},
+			},
+		})
+	}
+
+	// Add JWT public key secret volume if JWT is enabled and secret is referenced
+	if sk.Spec.JwtPublicKeySecretRef != nil {
+		podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
+			Name: jwtVolumeNameName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: sk.Spec.JwtPublicKeySecretRef.Name,
 				},
 			},
 		})

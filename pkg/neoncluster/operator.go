@@ -254,6 +254,22 @@ func (r *Operator) updateSafeKeeper(ctx context.Context, nc *v1alpha1.NeonCluste
 		},
 	}
 
+	// Add TLS secret reference if TLS is enabled
+	if controlplane.GetEnableTLS() {
+		desiredSpec.TLSSecretRef = &corev1.SecretReference{
+			Name:      controlPlaneDefaultSecretName,
+			Namespace: nc.Namespace,
+		}
+	}
+
+	// Add JWT public key secret reference if JWT is enabled
+	if controlplane.GetEnableJWT() {
+		desiredSpec.JwtPublicKeySecretRef = &corev1.SecretReference{
+			Name:      controlPlaneJWTSecretName,
+			Namespace: nc.Namespace,
+		}
+	}
+
 	// Calculate hash of desired spec
 	hash, err := k8sutils.CreateInputHash(metav1.ObjectMeta{}, desiredSpec)
 	if err != nil {

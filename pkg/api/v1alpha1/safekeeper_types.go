@@ -43,6 +43,14 @@ type SafeKeeperSpec struct {
 	// objectStorage defines the configuration for object storage used by safekeeper
 	// +required
 	ObjectStorage ObjectStorageSpec `json:"objectStorage"`
+
+	// tlsSecretRef contains cert/key for mtls between services.
+	// +optional
+	TLSSecretRef *v1.SecretReference `json:"tlsSecretRef,omitempty"`
+
+	// jwtPublicKeySecretRef contains public key for jwt auth between control plane and safekeeper.
+	// +optional
+	JwtPublicKeySecretRef *v1.SecretReference `json:"jwtPublicKeySecretRef,omitempty"`
 }
 
 // SafeKeeperStatus defines the observed state of SafeKeeper.
