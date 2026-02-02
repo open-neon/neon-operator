@@ -95,8 +95,8 @@ type SafeKeeperConfigOptions struct {
 
 	// Authentication & Security
 	// ========================
-    
-	// enableJwtAuth enables JWT authentication 
+
+	// enableJwtAuth enables JWT authentication
 	// +kubebuilder:default=false
 	// +optional
 	EnableJwtAuth bool `json:"enableJwtAuth,omitempty"`

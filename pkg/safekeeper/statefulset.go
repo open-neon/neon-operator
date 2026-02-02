@@ -34,7 +34,7 @@ const (
 	TLSKeyPath        = "/etc/safekeeper/certs/tls.key"
 	tlsVolumeName     = "tls-certs"
 	PublicKeyPath     = "/etc/safekeeper/certs/jwt.pub"
-	JwtKeyPath     = "/etc/safekeeper/certs/jwt.txt"
+	JwtKeyPath        = "/etc/safekeeper/certs/jwt.txt"
 	jwtVolumeNameName = "jwt-public-key"
 )
 
@@ -125,7 +125,7 @@ func buildSafeKeeperArgs(nodeID int32, sf *v1alpha1.SafeKeeper, opts *v1alpha1.S
 		args = append(args, fmt.Sprintf("--ssl_key_file=%s", TLSKeyPath))
 	}
 
-	if opts.EnableJwtAuth {
+	if opts.EnableJwtAuth && controlplane.GetEnableJWT() {
 		args = append(args, fmt.Sprintf("--http_auth_public_key_path=%s", PublicKeyPath))
 		args = append(args, fmt.Sprintf("--pg_auth_public_key_path=%s", PublicKeyPath))
 		args = append(args, fmt.Sprintf("--auth_token_path=%s", JwtKeyPath))
@@ -613,15 +613,3 @@ func makeSafeKeeperHeadlessService(sk *v1alpha1.SafeKeeper) *corev1.Service {
 
 	return service
 }
-
-// safekeeper \
-//   --listen-pg 127.0.0.1:5454 \
-//   --listen-http 127.0.0.1:7676 \
-//   --listen-https 127.0.0.1:7677 \
-//   \
-//   --ssl-cert-file /path/to/server.crt \
-//   --ssl-key-file /path/to/server.key \
-//   \
-//   --pg-auth-public-key-path /path/to/jwt_public_key.pem \
-//   --http-auth-public-key-path /path/to/jwt_public_key.pem \
-//   --data-dir /var/lib/safekeeper
