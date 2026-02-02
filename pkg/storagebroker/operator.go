@@ -116,7 +116,7 @@ func (o *Operator) updateDeployment(ctx context.Context, sb *v1alpha1.StorageBro
 	if err != nil {
 		return fmt.Errorf("failed to create storagebroker deployment spec: %w", err)
 	}
-	deployment, err := makeStorageBrokerDeployment(sb, profile, spec)
+	deployment, err := makeStorageBrokerDeployment(sb, spec)
 	if err != nil {
 		return fmt.Errorf("failed to create storagebroker deployment object: %w", err)
 	}

@@ -35,7 +35,7 @@ const (
 )
 
 // makeStorageBrokerDeployment creates a Deployment for the StorageBroker component
-func makeStorageBrokerDeployment(sb *v1alpha1.StorageBroker, sbp *v1alpha1.StorageBrokerProfile, spec *appsv1.DeploymentSpec) (*appsv1.Deployment, error) {
+func makeStorageBrokerDeployment(sb *v1alpha1.StorageBroker, spec *appsv1.DeploymentSpec) (*appsv1.Deployment, error) {
 
 	deployment := &appsv1.Deployment{
 		Spec: *spec,
@@ -72,13 +72,19 @@ func makeStorageBrokerDeploymentSpec(sb *v1alpha1.StorageBroker, sbp *v1alpha1.S
 	}
 
 	// Build arguments from config defaults
-	args := []string{"--listen-addr=0.0.0.0:50051", "--listen-https-addr=0.0.0.0:50052"}
+	args := []string{"--listen-addr=0.0.0.0:50051"}
 	args = append(args, fmt.Sprintf("--timeline-chan-size=%d", sbp.Spec.TimelineChanSize))
 	args = append(args, fmt.Sprintf("--all-keys-chan-size=%d", sbp.Spec.AllKeysChanSize))
 	args = append(args, fmt.Sprintf("--http2-keepalive-interval=%s", sbp.Spec.HTTP2KeepaliveInterval))
 	args = append(args, fmt.Sprintf("--log-format=%s", sbp.Spec.LogFormat))
 	if sbp.Spec.SSLCertReloadPeriod != nil {
 		args = append(args, fmt.Sprintf("--ssl-cert-reload-period=%s", *sbp.Spec.SSLCertReloadPeriod))
+	}
+
+	if sbp.Spec.EnableTLS {
+		args = append(args, "--listen-https-addr=0.0.0.0:50052")
+		args = append(args, fmt.Sprintf("--ssl-cert-file=%s", TLSCertPath))
+		args = append(args, fmt.Sprintf("--ssl-key-file=%s", TLSKeyPath))
 	}
 
 	container := corev1.Container{
