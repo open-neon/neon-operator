@@ -960,9 +960,6 @@ spec:
                         x-kubernetes-list-type: atomic
                     type: object
                 type: object
-              authTokenPath:
-                description: authTokenPath path to JWT token file for peer authentication
-                type: string
               availabilityZone:
                 description: availabilityZone is an identifier for the safekeeper's
                   availability zone
@@ -1002,6 +999,10 @@ spec:
                 default: false
                 description: disableWalBackup disables WAL backup to remote storage
                 type: boolean
+              enableJwtAuth:
+                default: false
+                description: enableJwtAuth enables JWT authentication
+                type: boolean
               enableOffload:
                 default: false
                 description: enableOffload enables automatic switching to offloaded
@@ -1011,10 +1012,6 @@ spec:
                 default: false
                 description: enablePullTimelineOnStartup auto-pulls timelines from
                   peer safekeepers
-                type: boolean
-              enableTlsWalServiceApi:
-                default: false
-                description: enableTlsWalServiceApi enables TLS in WAL service API
                 type: boolean
               evictionMinResident:
                 default: 15m
@@ -1034,10 +1031,6 @@ spec:
                 default: 5s
                 description: heartbeatTimeout specifies the peer safekeeper heartbeat
                   timeout
-                type: string
-              httpAuthPublicKeyPath:
-                description: httpAuthPublicKeyPath specifies the JWT public key for
-                  HTTP service auth
                 type: string
               image:
                 description: kubebuilder:default="ghcr.io/neondatabase/neon:latest"
@@ -1172,14 +1165,6 @@ spec:
                       the replica count to be deleted.
                     type: string
                 type: object
-              pgAuthPublicKeyPath:
-                description: pgAuthPublicKeyPath specifies the JWT public key for
-                  WAL service auth
-                type: string
-              pgTenantOnlyAuthPublicKeyPath:
-                description: pgTenantOnlyAuthPublicKeyPath specifies the JWT public
-                  key for tenant-only WAL auth
-                type: string
               remoteStorageMaxConcurrentSyncs:
                 description: remoteStorageMaxConcurrentSyncs specifies max concurrent
                   syncs to remote storage
@@ -1484,20 +1469,9 @@ spec:
                         type: string
                     type: object
                 type: object
-              sslCaFile:
-                description: sslCaFile path to trusted CA certificate file
-                type: string
-              sslCertFile:
-                default: server.crt
-                description: sslCertFile path to HTTPS certificate file
-                type: string
               sslCertReloadPeriod:
                 default: 60s
                 description: sslCertReloadPeriod certificate reload interval
-                type: string
-              sslKeyFile:
-                default: server.key
-                description: sslKeyFile path to HTTPS private key file
                 type: string
               storage:
                 description: storage defines the storage used by SafeKeeper.
