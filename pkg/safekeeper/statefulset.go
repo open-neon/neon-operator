@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/stateless-pg/stateless-pg/pkg/api/v1alpha1"
+	"github.com/stateless-pg/stateless-pg/pkg/control-plane"
 	"github.com/stateless-pg/stateless-pg/pkg/operator"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -218,6 +219,7 @@ func makeSafeKeeperStatefulSet(sk *v1alpha1.SafeKeeper, spec *appsv1.StatefulSet
 
 func makeSafeKeeperStatefulSetSpec(sk *v1alpha1.SafeKeeper, skp *v1alpha1.SafeKeeperProfile) (*appsv1.StatefulSetSpec, error) {
 	cpf := skp.Spec.CommonFields
+	jwtToken := controlplane.GetJWTToken()
 
 	image := NeonDefaultImage
 	if cpf.Image != nil {
@@ -261,6 +263,10 @@ func makeSafeKeeperStatefulSetSpec(sk *v1alpha1.SafeKeeper, skp *v1alpha1.SafeKe
 					FieldPath: "spec.hostname",
 				},
 			},
+		},
+		{
+			Name:  "JWT_TOKEN",
+			Value: jwtToken,
 		},
 	}
 
@@ -390,6 +396,15 @@ func makeSafeKeeperStatefulSetSpec(sk *v1alpha1.SafeKeeper, skp *v1alpha1.SafeKe
 		})
 	}
 
+	// Add JWT token temp volume mount if JWT is provided
+	if jwtToken != "" {
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      "jwt-temp",
+			MountPath: "/etc/safekeeper/certs",
+			ReadOnly:  true,
+		})
+	}
+
 	// Init container to extract pod ordinal and configure node ID
 	initContainers := []corev1.Container{
 		{
@@ -408,7 +423,15 @@ if ! echo "$ORDINAL" | grep -qE '^[0-9]+$'; then
   exit 1
 fi
 
-echo "Pod: $POD_NAME, Ordinal: $ORDINAL" >&2`,
+echo "Pod: $POD_NAME, Ordinal: $ORDINAL" >&2
+
+# Create JWT file if JWT_TOKEN is provided
+if [ -n "$JWT_TOKEN" ]; then
+  mkdir -p /etc/safekeeper/certs
+  echo "$JWT_TOKEN" > /etc/safekeeper/certs/jwt.txt
+  chmod 600 /etc/safekeeper/certs/jwt.txt
+  echo "JWT token file created at /etc/safekeeper/certs/jwt.txt" >&2
+fi`,
 			},
 			Env: []corev1.EnvVar{
 				{
@@ -419,8 +442,29 @@ echo "Pod: $POD_NAME, Ordinal: $ORDINAL" >&2`,
 						},
 					},
 				},
+				{
+					Name:  "JWT_TOKEN",
+					Value: jwtToken,
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "jwt-temp",
+					MountPath: "/etc/safekeeper/certs",
+				},
 			},
 		},
+	}
+
+	// Add JWT temp volume to the volumes list
+	volumes := append([]corev1.Volume{}, skp.Spec.Volumes...)
+	if jwtToken != "" {
+		volumes = append(volumes, corev1.Volume{
+			Name: "jwt-temp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
 	}
 
 	podTemplateSpec := corev1.PodTemplateSpec{
@@ -434,7 +478,7 @@ echo "Pod: $POD_NAME, Ordinal: $ORDINAL" >&2`,
 			NodeSelector:     cpf.NodeSelector,
 			Affinity:         cpf.Affinity,
 			SecurityContext:  cpf.SecurityContext,
-			Volumes:          skp.Spec.Volumes,
+			Volumes:          volumes,
 		},
 	}
 
