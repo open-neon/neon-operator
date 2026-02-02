@@ -327,5 +327,10 @@ func generatePageServerToml(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerPro
 		sb.WriteString(fmt.Sprintf("auth_validation_public_key_path = '%s'\n", PublicKeyPath))
 	}
 
+	// Remote storage configuration
+	remotestoragePrefix := ps.Spec.ObjectStorage.Prefix + "/pageserver/"
+	sb.WriteString(fmt.Sprintf("remote_storage = { endpoint = '%s', bucket_name = '%s', bucket_region = '%s', prefix_in_bucket = '%s', concurrency_limit = %d }\n",
+		ps.Spec.ObjectStorage.Endpoint, ps.Spec.ObjectStorage.Bucket, ps.Spec.ObjectStorage.Region, remotestoragePrefix, ps.Spec.ObjectStorage.MaxConcurrentRequests))
+
 	return sb.String()
 }

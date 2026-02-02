@@ -41,9 +41,9 @@ func buildSafeKeeperArgs(nodeID int32, sf *v1alpha1.SafeKeeper, opts *v1alpha1.S
 		return args
 	}
 
-	args = append(args, fmt.Sprintf("--listen_pg=%s", "0.0.0.0:5432"))
-	args = append(args, fmt.Sprintf("--listen_http=%s", "0.0.0.0:9898"))
-	args = append(args, fmt.Sprintf("--advertise_pg=%s", "$(HOSTNAME).safekeeper.$(POD_NAMESPACE).svc.cluster.local:5432"))
+	args = append(args, fmt.Sprintf("--listen_pg=%s", "0.0.0.0:5454"))
+	args = append(args, fmt.Sprintf("--listen_http=%s", "0.0.0.0:7676"))
+	args = append(args, fmt.Sprintf("--advertise_pg=%s", "$(HOSTNAME).safekeeper.$(POD_NAMESPACE).svc.cluster.local:5454"))
 	args = append(args, fmt.Sprintf("--broker_endpoint=http://%s-broker.%s.svc.cluster.local:50051", sf.Labels["neoncluster"], sf.Namespace))
 
 	// Node & Cluster Configuration
@@ -87,6 +87,13 @@ func buildSafeKeeperArgs(nodeID int32, sf *v1alpha1.SafeKeeper, opts *v1alpha1.S
 	remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("bucket_name = \"%s\"", sf.Spec.ObjectStorage.Bucket))
 
 	remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("bucket_region = \"%s\"", sf.Spec.ObjectStorage.Region))
+
+	// Add bucket endpoint for local and minio providers
+	if sf.Spec.ObjectStorage.Provider == "local" || sf.Spec.ObjectStorage.Provider == "minio" {
+		if sf.Spec.ObjectStorage.Endpoint != "" {
+			remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("bucket_endpoint = \"%s\"", sf.Spec.ObjectStorage.Endpoint))
+		}
+	}
 
 	if sf.Spec.ObjectStorage.MaxConcurrentRequests != nil {
 		remoteStorageParts = append(remoteStorageParts, fmt.Sprintf("concurrency_limit = %d", sf.Spec.ObjectStorage.MaxConcurrentRequests))
@@ -262,6 +269,73 @@ func makeSafeKeeperStatefulSetSpec(sk *v1alpha1.SafeKeeper, skp *v1alpha1.SafeKe
 		},
 	}
 
+	// Add credentials environment variables for object storage
+	if sk.Spec.ObjectStorage.CredentialsSecret != nil {
+		provider := sk.Spec.ObjectStorage.Provider
+		switch provider {
+		case "s3", "minio":
+			// AWS S3 or MinIO credentials
+			env = append(env,
+				corev1.EnvVar{
+					Name: "AWS_ACCESS_KEY_ID",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: sk.Spec.ObjectStorage.CredentialsSecret.Name,
+							},
+							Key: "access-key-id",
+						},
+					},
+				},
+				corev1.EnvVar{
+					Name: "AWS_SECRET_ACCESS_KEY",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: sk.Spec.ObjectStorage.CredentialsSecret.Name,
+							},
+							Key: "secret-access-key",
+						},
+					},
+				},
+			)
+		case "gcs":
+			// Google Cloud Storage credentials
+			env = append(env,
+				corev1.EnvVar{
+					Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+					Value: "/var/secrets/gcs/service-account.json",
+				},
+			)
+		case "azure":
+			// Azure Storage credentials
+			env = append(env,
+				corev1.EnvVar{
+					Name: "AZURE_STORAGE_ACCOUNT",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: sk.Spec.ObjectStorage.CredentialsSecret.Name,
+							},
+							Key: "account-name",
+						},
+					},
+				},
+				corev1.EnvVar{
+					Name: "AZURE_STORAGE_KEY",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: sk.Spec.ObjectStorage.CredentialsSecret.Name,
+							},
+							Key: "account-key",
+						},
+					},
+				},
+			)
+		}
+	}
+
 	// Note: For StatefulSet, each pod's nodeID is derived from its ordinal
 	// (e.g., pod name "safekeeper-0" gets ID 0, "safekeeper-1" gets ID 1)
 	// We use ordinal 0 as a base for the args spec; individual pods
@@ -292,6 +366,15 @@ func makeSafeKeeperStatefulSetSpec(sk *v1alpha1.SafeKeeper, skp *v1alpha1.SafeKe
 				MountPath: "/data",
 			})
 		}
+	}
+
+	// Add GCS credentials volume mount if GCS is configured
+	if sk.Spec.ObjectStorage.CredentialsSecret != nil && sk.Spec.ObjectStorage.Provider == "gcs" {
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      "gcs-credentials",
+			MountPath: "/var/secrets/gcs",
+			ReadOnly:  true,
+		})
 	}
 
 	// Init container to extract pod ordinal and configure node ID
@@ -359,6 +442,24 @@ echo "Pod: $POD_NAME, Ordinal: $ORDINAL" >&2`,
 				},
 			})
 		}
+	}
+
+	// Add credentials volume for GCS if needed
+	if sk.Spec.ObjectStorage.CredentialsSecret != nil && sk.Spec.ObjectStorage.Provider == "gcs" {
+		podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
+			Name: "gcs-credentials",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: sk.Spec.ObjectStorage.CredentialsSecret.Name,
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "service-account.json",
+							Path: "service-account.json",
+						},
+					},
+				},
+			},
+		})
 	}
 
 	spec := appsv1.StatefulSetSpec{
@@ -431,3 +532,15 @@ func makeSafeKeeperHeadlessService(sk *v1alpha1.SafeKeeper) *corev1.Service {
 
 	return service
 }
+
+// safekeeper \
+//   --listen-pg 127.0.0.1:5454 \
+//   --listen-http 127.0.0.1:7676 \
+//   --listen-https 127.0.0.1:7677 \
+//   \
+//   --ssl-cert-file /path/to/server.crt \
+//   --ssl-key-file /path/to/server.key \
+//   \
+//   --pg-auth-public-key-path /path/to/jwt_public_key.pem \
+//   --http-auth-public-key-path /path/to/jwt_public_key.pem \
+//   --data-dir /var/lib/safekeeper

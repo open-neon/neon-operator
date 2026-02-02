@@ -110,6 +110,78 @@ func makePageServerStatefulSetSpec(ps *v1alpha1.PageServer, psp *v1alpha1.PageSe
 		})
 	}
 
+	// Add credentials environment variables for object storage
+	if ps.Spec.ObjectStorage.CredentialsSecret != nil {
+		provider := ps.Spec.ObjectStorage.Provider
+		switch provider {
+		case "s3", "minio":
+			// AWS S3 or MinIO credentials
+			container.Env = append(container.Env,
+				corev1.EnvVar{
+					Name: "AWS_ACCESS_KEY_ID",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: ps.Spec.ObjectStorage.CredentialsSecret.Name,
+							},
+							Key: "access-key-id",
+						},
+					},
+				},
+				corev1.EnvVar{
+					Name: "AWS_SECRET_ACCESS_KEY",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: ps.Spec.ObjectStorage.CredentialsSecret.Name,
+							},
+							Key: "secret-access-key",
+						},
+					},
+				},
+			)
+		case "gcs":
+			// Google Cloud Storage credentials
+			container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+				Name:      "gcs-credentials",
+				MountPath: "/var/secrets/gcs",
+				ReadOnly:  true,
+			})
+			container.Env = append(container.Env,
+				corev1.EnvVar{
+					Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+					Value: "/var/secrets/gcs/service-account.json",
+				},
+			)
+		case "azure":
+			// Azure Storage credentials
+			container.Env = append(container.Env,
+				corev1.EnvVar{
+					Name: "AZURE_STORAGE_ACCOUNT",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: ps.Spec.ObjectStorage.CredentialsSecret.Name,
+							},
+							Key: "account-name",
+						},
+					},
+				},
+				corev1.EnvVar{
+					Name: "AZURE_STORAGE_KEY",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: ps.Spec.ObjectStorage.CredentialsSecret.Name,
+							},
+							Key: "account-key",
+						},
+					},
+				},
+			)
+		}
+	}
+
 	// Init container to generate identity.toml with pod name as id
 	initContainer := corev1.Container{
 		Name:  "identity-generator",
@@ -192,6 +264,24 @@ func makePageServerStatefulSetSpec(ps *v1alpha1.PageServer, psp *v1alpha1.PageSe
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: ps.Spec.JwtPublicKeySecretRef.Name,
+				},
+			},
+		})
+	}
+
+	// Add credentials volume for GCS if needed
+	if ps.Spec.ObjectStorage.CredentialsSecret != nil && ps.Spec.ObjectStorage.Provider == "gcs" {
+		podTemplateSpec.Spec.Volumes = append(podTemplateSpec.Spec.Volumes, corev1.Volume{
+			Name: "gcs-credentials",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: ps.Spec.ObjectStorage.CredentialsSecret.Name,
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "service-account.json",
+							Path: "service-account.json",
+						},
+					},
 				},
 			},
 		})
