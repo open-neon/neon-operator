@@ -98,11 +98,17 @@ func (o *Operator) sync(ctx context.Context, name, namespace string) error {
 
 	profile = profile.DeepCopy()
 
+	// Check if TLS is enabled in StorageBrokerProfile
+	storageBrokerTLSEnabled, err := o.isStorageBrokerTLSEnabled(ctx, ps)
+	if err != nil {
+		return fmt.Errorf("failed to check storagebroker tls status: %w", err)
+	}
+
 	if err := o.updateHeadlessService(ctx, ps); err != nil {
 		return fmt.Errorf("failed to reconcile pageserver headless service: %w", err)
 	}
 
-	if err := o.createPageServerConfigMap(ctx, ps, profile); err != nil {
+	if err := o.createPageServerConfigMap(ctx, ps, profile, storageBrokerTLSEnabled); err != nil {
 		return fmt.Errorf("failed to create pageserver configmap: %w", err)
 	}
 
@@ -223,7 +229,39 @@ func (o *Operator) updateHeadlessService(ctx context.Context, ps *v1alpha1.PageS
 	return nil
 }
 
-func (o *Operator) createPageServerConfigMap(ctx context.Context, ps *v1alpha1.PageServer, psp *v1alpha1.PageServerProfile) error {
+// isStorageBrokerTLSEnabled checks if TLS is enabled in the StorageBrokerProfile for the given PageServer
+func (o *Operator) isStorageBrokerTLSEnabled(ctx context.Context, ps *v1alpha1.PageServer) (bool, error) {
+	neonClusterName := ps.Labels["neoncluster"]
+	if neonClusterName == "" {
+		return false, nil
+	}
+
+	nc := &v1alpha1.NeonCluster{}
+	if err := o.nclient.Get(ctx, client.ObjectKey{
+		Name:      neonClusterName,
+		Namespace: ps.GetNamespace(),
+	}, nc); err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get neoncluster: %w", err)
+	}
+
+	sbProf := &v1alpha1.StorageBrokerProfile{}
+	if err := o.nclient.Get(ctx, client.ObjectKey{
+		Name:      nc.Spec.StorageBrokerProfileRef.Name,
+		Namespace: nc.Spec.StorageBrokerProfileRef.Namespace,
+	}, sbProf); err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get storagebroker profile: %w", err)
+	}
+
+	return sbProf.Spec.EnableTLS, nil
+}
+
+func (o *Operator) createPageServerConfigMap(ctx context.Context, ps *v1alpha1.PageServer, psp *v1alpha1.PageServerProfile, storageBrokerTLSEnabled bool) error {
 	configMapName := ps.GetName() + "-config"
 	namespace := ps.GetNamespace()
 
@@ -236,7 +274,7 @@ func (o *Operator) createPageServerConfigMap(ctx context.Context, ps *v1alpha1.P
 			return fmt.Errorf("failed to get pageserver configmap: %w", err)
 		}
 		// Create new configmap
-		tomlContent := generatePageServerToml(ps, psp)
+		tomlContent := generatePageServerToml(ps, psp, storageBrokerTLSEnabled)
 		cm = &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      configMapName,
@@ -258,7 +296,7 @@ func (o *Operator) createPageServerConfigMap(ctx context.Context, ps *v1alpha1.P
 	}
 
 	// Update existing configmap
-	tomlContent := generatePageServerToml(ps, psp)
+	tomlContent := generatePageServerToml(ps, psp, storageBrokerTLSEnabled)
 	cm.Data = map[string]string{
 		"pageserver.toml": tomlContent,
 	}
@@ -270,7 +308,7 @@ func (o *Operator) createPageServerConfigMap(ctx context.Context, ps *v1alpha1.P
 	return nil
 }
 
-func generatePageServerToml(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerProfile) string {
+func generatePageServerToml(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerProfile, storageBrokerTLSEnabled bool) string {
 	var sb strings.Builder
 
 	// Control plane settings
@@ -282,7 +320,13 @@ func generatePageServerToml(ps *v1alpha1.PageServer, psp *v1alpha1.PageServerPro
 	}
 
 	neonClusterName := ps.Labels["neoncluster"]
-	sb.WriteString(fmt.Sprintf("broker_endpoint = '%s'\n", fmt.Sprintf("http://%s-broker.%s.svc.cluster.local:50051", neonClusterName, ps.GetNamespace())))
+	brokerProtocol := "http"
+	brokerPort := "50051"
+	if storageBrokerTLSEnabled && controlplane.GetEnableTLS() {
+		brokerProtocol = "https"
+		brokerPort = "50052"
+	}
+	sb.WriteString(fmt.Sprintf("broker_endpoint = '%s'\n", fmt.Sprintf("%s://%s-broker.%s.svc.cluster.local:%s", brokerProtocol, neonClusterName, ps.GetNamespace(), brokerPort)))
 	// Network settings
 	sb.WriteString(fmt.Sprintf("listen_pg_addr = '%s'\n", "0.0.0.0:6400"))
 	sb.WriteString(fmt.Sprintf("http_listen_addr = '%s'\n", "0.0.0.0:9898"))

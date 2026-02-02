@@ -39,7 +39,7 @@ const (
 )
 
 // buildSafeKeeperArgs builds the command-line arguments for the safekeeper process
-func buildSafeKeeperArgs(nodeID int32, sf *v1alpha1.SafeKeeper, opts *v1alpha1.SafeKeeperConfigOptions) []string {
+func buildSafeKeeperArgs(nodeID int32, sf *v1alpha1.SafeKeeper, opts *v1alpha1.SafeKeeperConfigOptions, storageBrokerTLSEnabled bool) []string {
 	args := []string{
 		fmt.Sprintf("--id=%d", nodeID),
 	}
@@ -51,7 +51,14 @@ func buildSafeKeeperArgs(nodeID int32, sf *v1alpha1.SafeKeeper, opts *v1alpha1.S
 	args = append(args, fmt.Sprintf("--listen_pg=%s", "0.0.0.0:5454"))
 	args = append(args, fmt.Sprintf("--listen_http=%s", "0.0.0.0:7676"))
 	args = append(args, fmt.Sprintf("--advertise_pg=%s", "$(HOSTNAME).safekeeper.$(POD_NAMESPACE).svc.cluster.local:5454"))
-	args = append(args, fmt.Sprintf("--broker_endpoint=http://%s-broker.%s.svc.cluster.local:50051", sf.Labels["neoncluster"], sf.Namespace))
+
+	brokerProtocol := "http"
+	brokerPort := "50051"
+	if storageBrokerTLSEnabled && controlplane.GetEnableTLS() {
+		brokerProtocol = "https"
+		brokerPort = "50052"
+	}
+	args = append(args, fmt.Sprintf("--broker_endpoint=%s://%s-broker.%s.svc.cluster.local:%s", brokerProtocol, sf.Labels["neoncluster"], sf.Namespace, brokerPort))
 
 	// Node & Cluster Configuration
 	args = append(args, fmt.Sprintf("--datadir=%s", opts.DataDir))
@@ -217,7 +224,7 @@ func makeSafeKeeperStatefulSet(sk *v1alpha1.SafeKeeper, spec *appsv1.StatefulSet
 	return statefulSet, nil
 }
 
-func makeSafeKeeperStatefulSetSpec(sk *v1alpha1.SafeKeeper, skp *v1alpha1.SafeKeeperProfile) (*appsv1.StatefulSetSpec, error) {
+func makeSafeKeeperStatefulSetSpec(sk *v1alpha1.SafeKeeper, skp *v1alpha1.SafeKeeperProfile, storageBrokerTLSEnabled bool) (*appsv1.StatefulSetSpec, error) {
 	cpf := skp.Spec.CommonFields
 	jwtToken := controlplane.GetJWTToken()
 
@@ -342,7 +349,7 @@ func makeSafeKeeperStatefulSetSpec(sk *v1alpha1.SafeKeeper, skp *v1alpha1.SafeKe
 	// We use ordinal 0 as a base for the args spec; individual pods
 	// must override the --id argument with their actual ordinal
 	// This is typically handled by a wrapper script or init container
-	args := buildSafeKeeperArgs(0, sk, &skp.Spec.SafeKeeperConfigOptions)
+	args := buildSafeKeeperArgs(0, sk, &skp.Spec.SafeKeeperConfigOptions, storageBrokerTLSEnabled)
 
 	container := corev1.Container{
 		Name:            "safekeeper",
