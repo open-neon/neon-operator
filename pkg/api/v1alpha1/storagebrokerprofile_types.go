@@ -60,6 +60,11 @@ type StorageBrokerConfigOptions struct {
 	// +kubebuilder:default="60s"
 	// +optional
 	SSLCertReloadPeriod *string `json:"sslCertReloadPeriod,omitempty"`
+
+	// enableTLS indicates whether to enable TLS for StorageBroker
+	// +kubebuilder:default=false
+	// +optional
+	EnableTLS 	   bool `json:"enableTLS,omitempty"`
 }
 
 // StorageBrokerProfileSpec defines the desired state of StorageBrokerProfile.
