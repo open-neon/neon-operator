@@ -33,6 +33,7 @@ const (
 	TLSKeyPath        = "/etc/safekeeper/certs/tls.key"
 	tlsVolumeName     = "tls-certs"
 	PublicKeyPath     = "/etc/safekeeper/certs/jwt.pub"
+	JwtKeyPath     = "/etc/safekeeper/certs/jwt.txt"
 	jwtVolumeNameName = "jwt-public-key"
 )
 
@@ -110,35 +111,24 @@ func buildSafeKeeperArgs(nodeID int32, sf *v1alpha1.SafeKeeper, opts *v1alpha1.S
 	args = append(args, fmt.Sprintf("--remote_storage=%s", remoteStorageStr))
 
 	// Authentication & Security
-	if opts.PgAuthPublicKeyPath != nil {
-		args = append(args, fmt.Sprintf("--pg_auth_public_key_path=%s", *opts.PgAuthPublicKeyPath))
-	}
-	if opts.PgTenantOnlyAuthPublicKeyPath != nil {
-		args = append(args, fmt.Sprintf("--pg_tenant_only_auth_public_key_path=%s", *opts.PgTenantOnlyAuthPublicKeyPath))
-	}
-	if opts.HttpAuthPublicKeyPath != nil {
-		args = append(args, fmt.Sprintf("--http_auth_public_key_path=%s", *opts.HttpAuthPublicKeyPath))
-	}
-	if opts.AuthTokenPath != nil {
-		args = append(args, fmt.Sprintf("--auth_token_path=%s", *opts.AuthTokenPath))
-	}
-	if opts.SslKeyFile != nil {
-		args = append(args, fmt.Sprintf("--ssl_key_file=%s", *opts.SslKeyFile))
-	}
-	if opts.SslCertFile != nil {
-		args = append(args, fmt.Sprintf("--ssl_cert_file=%s", *opts.SslCertFile))
-	}
+
 	if opts.SslCertReloadPeriod != nil {
 		args = append(args, fmt.Sprintf("--ssl_cert_reload_period=%s", *opts.SslCertReloadPeriod))
 	}
-	if opts.SslCaFile != nil {
-		args = append(args, fmt.Sprintf("--ssl_ca_file=%s", *opts.SslCaFile))
-	}
+
 	if opts.UseHttpsSafekeeperApi {
 		args = append(args, "--use_https_safekeeper_api=true")
+		args = append(args, "--listen-https=0.0.0.0:7676")
+		args = append(args, fmt.Sprintf("--ssl_ca_file=%s", TLSCertPath))
+		args = append(args, fmt.Sprintf("--ssl_cert_file=%s", TLSCertPath))
+		args = append(args, fmt.Sprintf("--ssl_key_file=%s", TLSKeyPath))
 	}
-	if opts.EnableTlsWalServiceApi {
-		args = append(args, "--enable_tls_wal_service_api=true")
+
+	if opts.EnableJwtAuth {
+		args = append(args, fmt.Sprintf("--http_auth_public_key_path=%s", PublicKeyPath))
+		args = append(args, fmt.Sprintf("--pg_auth_public_key_path=%s", PublicKeyPath))
+		args = append(args, fmt.Sprintf("--auth_token_path=%s", JwtKeyPath))
+
 	}
 
 	// Safety & Reliability

@@ -1177,26 +1177,13 @@ spec:
                     default: jwt
                     description: authType controls API auth.
                     enum:
-                    - none
-                    - jwt
+                    - Trust
+                    - NeonJWT
                     type: string
                   enableTLS:
                     default: true
                     description: enableTLS enables TLS for PageServer APIs.
                     type: boolean
-                  tlsSecretRef:
-                    description: tlsSecretRef contains cert/key.
-                    properties:
-                      name:
-                        description: name is unique within a namespace to reference
-                          a secret resource.
-                        type: string
-                      namespace:
-                        description: namespace defines the space within which the
-                          secret name must be unique.
-                        type: string
-                    type: object
-                    x-kubernetes-map-type: atomic
                 type: object
               securityContext:
                 description: |-

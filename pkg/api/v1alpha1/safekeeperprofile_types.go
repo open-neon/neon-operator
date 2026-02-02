@@ -95,51 +95,27 @@ type SafeKeeperConfigOptions struct {
 
 	// Authentication & Security
 	// ========================
-
-	// pgAuthPublicKeyPath specifies the JWT public key for WAL service auth
+    
+	// enableJwtAuth enables JWT authentication 
+	// +kubebuilder:default=false
 	// +optional
-	PgAuthPublicKeyPath *string `json:"pgAuthPublicKeyPath,omitempty"`
-
-	// pgTenantOnlyAuthPublicKeyPath specifies the JWT public key for tenant-only WAL auth
-	// +optional
-	PgTenantOnlyAuthPublicKeyPath *string `json:"pgTenantOnlyAuthPublicKeyPath,omitempty"`
-
-	// httpAuthPublicKeyPath specifies the JWT public key for HTTP service auth
-	// +optional
-	HttpAuthPublicKeyPath *string `json:"httpAuthPublicKeyPath,omitempty"`
-
-	// authTokenPath path to JWT token file for peer authentication
-	// +optional
-	AuthTokenPath *string `json:"authTokenPath,omitempty"`
-
-	// sslKeyFile path to HTTPS private key file
-	// +kubebuilder:default="server.key"
-	// +optional
-	SslKeyFile *string `json:"sslKeyFile,omitempty"`
-
-	// sslCertFile path to HTTPS certificate file
-	// +kubebuilder:default="server.crt"
-	// +optional
-	SslCertFile *string `json:"sslCertFile,omitempty"`
+	EnableJwtAuth bool `json:"enableJwtAuth,omitempty"`
 
 	// sslCertReloadPeriod certificate reload interval
 	// +kubebuilder:default="60s"
 	// +optional
 	SslCertReloadPeriod *string `json:"sslCertReloadPeriod,omitempty"`
 
-	// sslCaFile path to trusted CA certificate file
-	// +optional
-	SslCaFile *string `json:"sslCaFile,omitempty"`
-
 	// useHttpsSafekeeperApi uses HTTPS for peer safekeeper API
 	// +kubebuilder:default=false
 	// +optional
 	UseHttpsSafekeeperApi bool `json:"useHttpsSafekeeperApi,omitempty"`
 
-	// enableTlsWalServiceApi enables TLS in WAL service API
-	// +kubebuilder:default=false
-	// +optional
-	EnableTlsWalServiceApi bool `json:"enableTlsWalServiceApi,omitempty"`
+	// TODO
+	// // enableTlsWalServiceApi enables TLS in WAL service API
+	// // +kubebuilder:default=false
+	// // +optional
+	// EnableTlsWalServiceApi bool `json:"enableTlsWalServiceApi,omitempty"`
 
 	// Safety & Reliability
 	// ===================

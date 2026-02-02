@@ -50,6 +50,20 @@ spec:
           spec:
             description: spec defines the desired state of PageServer
             properties:
+              jwtPublicKeySecretRef:
+                description: jwtPublicKeySecretRef contains public key for jwt auth
+                  between control plane and pageserver.
+                properties:
+                  name:
+                    description: name is unique within a namespace to reference a
+                      secret resource.
+                    type: string
+                  namespace:
+                    description: namespace defines the space within which the secret
+                      name must be unique.
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
               objectStorage:
                 description: objectStorage defines the configuration for object storage
                   used by Neon components
@@ -157,6 +171,19 @@ spec:
                 format: int32
                 minimum: 1
                 type: integer
+              tlsSecretRef:
+                description: tlsSecretRef contains cert/key for mtls between services.
+                properties:
+                  name:
+                    description: name is unique within a namespace to reference a
+                      secret resource.
+                    type: string
+                  namespace:
+                    description: namespace defines the space within which the secret
+                      name must be unique.
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
             required:
             - objectStorage
             - profileRef
