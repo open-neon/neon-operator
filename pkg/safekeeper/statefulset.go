@@ -117,7 +117,7 @@ func buildSafeKeeperArgs(nodeID int32, sf *v1alpha1.SafeKeeper, opts *v1alpha1.S
 		args = append(args, fmt.Sprintf("--ssl_cert_reload_period=%s", *opts.SslCertReloadPeriod))
 	}
 
-	if opts.UseHttpsSafekeeperApi {
+	if opts.UseHttpsSafekeeperApi && controlplane.GetEnableTLS() {
 		args = append(args, "--use_https_safekeeper_api=true")
 		args = append(args, "--listen-https=0.0.0.0:7676")
 		args = append(args, fmt.Sprintf("--ssl_ca_file=%s", TLSCertPath))
