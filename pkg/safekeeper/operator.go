@@ -60,6 +60,38 @@ func New(nclient client.Client, scheme *runtime.Scheme, logger *slog.Logger, con
 	}, nil
 }
 
+// isStorageBrokerTLSEnabled checks if TLS is enabled in the StorageBrokerProfile for the given SafeKeeper
+func (o *Operator) isStorageBrokerTLSEnabled(ctx context.Context, sk *v1alpha1.SafeKeeper) (bool, error) {
+	neonClusterName := sk.Labels["neoncluster"]
+	if neonClusterName == "" {
+		return false, nil
+	}
+
+	nc := &v1alpha1.NeonCluster{}
+	if err := o.nclient.Get(ctx, client.ObjectKey{
+		Name:      neonClusterName,
+		Namespace: sk.GetNamespace(),
+	}, nc); err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get neoncluster: %w", err)
+	}
+
+	sbProf := &v1alpha1.StorageBrokerProfile{}
+	if err := o.nclient.Get(ctx, client.ObjectKey{
+		Name:      nc.Spec.StorageBrokerProfileRef.Name,
+		Namespace: nc.Spec.StorageBrokerProfileRef.Namespace,
+	}, sbProf); err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get storagebroker profile: %w", err)
+	}
+
+	return sbProf.Spec.EnableTLS, nil
+}
+
 // sync reconciles the SafeKeeper resource state with the desired state.
 func (o *Operator) sync(ctx context.Context, name, namespace string) error {
 
@@ -91,18 +123,24 @@ func (o *Operator) sync(ctx context.Context, name, namespace string) error {
 
 	profile = profile.DeepCopy()
 
+	// Check if TLS is enabled in StorageBrokerProfile
+	storageBrokerTLSEnabled, err := o.isStorageBrokerTLSEnabled(ctx, sk)
+	if err != nil {
+		return fmt.Errorf("failed to check storagebroker tls status: %w", err)
+	}
+
 	if err := o.updateHeadlessService(ctx, sk); err != nil {
 		return fmt.Errorf("failed to reconcile safekeeper headless service: %w", err)
 	}
 
-	if err := o.updateStatefulSet(ctx, sk, profile); err != nil {
+	if err := o.updateStatefulSet(ctx, sk, profile, storageBrokerTLSEnabled); err != nil {
 		return fmt.Errorf("failed to reconcile safekeeper statefulset: %w", err)
 	}
 
 	return nil
 }
 
-func (o *Operator) updateStatefulSet(ctx context.Context, sk *v1alpha1.SafeKeeper, profile *v1alpha1.SafeKeeperProfile) error {
+func (o *Operator) updateStatefulSet(ctx context.Context, sk *v1alpha1.SafeKeeper, profile *v1alpha1.SafeKeeperProfile, storageBrokerTLSEnabled bool) error {
 	ss, err := o.kclient.AppsV1().StatefulSets(sk.GetNamespace()).Get(ctx, sk.GetName(), metav1.GetOptions{})
 	notFound := false
 	if err != nil {
@@ -113,7 +151,7 @@ func (o *Operator) updateStatefulSet(ctx context.Context, sk *v1alpha1.SafeKeepe
 		}
 	}
 
-	spec, err := makeSafeKeeperStatefulSetSpec(sk, profile)
+	spec, err := makeSafeKeeperStatefulSetSpec(sk, profile, storageBrokerTLSEnabled)
 	if err != nil {
 		return fmt.Errorf("failed to create safekeeper statefulset spec: %w", err)
 	}

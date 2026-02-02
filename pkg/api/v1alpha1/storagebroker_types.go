@@ -39,6 +39,10 @@ type StorageBrokerSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
+
+	// tlsSecretRef contains cert/key for mtls between services.
+	// +optional
+	TLSSecretRef *v1.SecretReference `json:"tlsSecretRef,omitempty"`
 }
 
 // StorageBrokerStatus defines the observed state of StorageBroker.

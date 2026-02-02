@@ -1007,6 +1007,10 @@ spec:
                     format: int32
                     minimum: 1
                     type: integer
+                  enableTLS:
+                    default: false
+                    description: enableTLS indicates whether to enable TLS for StorageBroker
+                    type: boolean
                   http2KeepaliveInterval:
                     default: 5000ms
                     description: http2KeepaliveInterval defines the HTTP/2 keepalive
