@@ -29,6 +29,9 @@ import (
 
 const (
 	NeonDefaultImage = "ghcr.io/neondatabase/neon:latest"
+	TLSCertPath      = "/etc/storagebroker/certs/tls.crt"
+	TLSKeyPath       = "/etc/storagebroker/certs/tls.key"
+	tlsVolumeName    = "tls-certs"
 )
 
 // makeStorageBrokerDeployment creates a Deployment for the StorageBroker component
@@ -99,6 +102,30 @@ func makeStorageBrokerDeploymentSpec(sb *v1alpha1.StorageBroker, sbp *v1alpha1.S
 		},
 	}
 
+	// Add TLS secret volume mount
+	if sb.Spec.TLSSecretRef != nil {
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      tlsVolumeName,
+			MountPath: "/etc/storagebroker/certs",
+			ReadOnly:  true,
+		})
+	}
+
+	// Build volumes
+	volumes := []corev1.Volume{}
+
+	// Add TLS secret volume if TLS is enabled and secret is referenced
+	if sb.Spec.TLSSecretRef != nil {
+		volumes = append(volumes, corev1.Volume{
+			Name: tlsVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: sb.Spec.TLSSecretRef.Name,
+				},
+			},
+		})
+	}
+
 	podTemplateSpec := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: labels,
@@ -109,6 +136,7 @@ func makeStorageBrokerDeploymentSpec(sb *v1alpha1.StorageBroker, sbp *v1alpha1.S
 			NodeSelector:     cpf.NodeSelector,
 			Affinity:         cpf.Affinity,
 			SecurityContext:  cpf.SecurityContext,
+			Volumes:          volumes,
 		},
 	}
 
