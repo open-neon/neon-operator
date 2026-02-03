@@ -303,4 +303,4 @@ Key characteristics:
 - **Scalable**: Designed to manage thousands of tenant shards
 - **Observable**: Exposes metrics and health status for monitoring
 
-- **Sharding**: A single timeline must not be sharded among multiple pageserver
+- **Sharding**: A single timeline must not be sharded among multiple pageserver, different timelines can be in different pageservers but not necessary
