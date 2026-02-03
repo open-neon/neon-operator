@@ -302,3 +302,5 @@ Key characteristics:
 - **Safe**: Generation numbers prevent data loss and split-brain scenarios
 - **Scalable**: Designed to manage thousands of tenant shards
 - **Observable**: Exposes metrics and health status for monitoring
+
+- **Sharding**: A single timeline must not be sharded among multiple pageserver
